@@ -1,0 +1,6 @@
+# See https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-on-github/about-code-owners
+
+# Order is important! The last matching pattern takes the most precedence.
+
+# By default every team is owner
+*                                         @DataDog/ci-app-libraries
