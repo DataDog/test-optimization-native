@@ -4,6 +4,7 @@ on:
     workflow_dispatch:
     push:
       branches: [ main ]
+      tags: ["v*"]
     pull_request:
       branches: [ main ]
 
@@ -199,3 +200,23 @@ jobs:
           name: all-artifacts
           path: artifacts/*.7z*
           if-no-files-found: error
+
+  release:
+    name: Create Release and Upload Artifacts
+    needs: collect_artifacts
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: all-artifacts
+          path: release_artifacts
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release_artifacts/*.7z*
+          draft: false
+          prerelease: false
+          
