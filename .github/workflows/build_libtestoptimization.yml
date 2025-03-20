@@ -1,0 +1,201 @@
+name: Build libtestoptimization
+
+on:
+    workflow_dispatch:
+    push:
+      branches: [ main ]
+    pull_request:
+      branches: [ main ]
+
+jobs:
+  mac_job:
+    name: macOS
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+            go-version: '1.24'
+      - run: brew install sevenzip coreutils
+      - name: Checkout external repository
+        uses: actions/checkout@v4
+        with:
+          repository: "DataDog/dd-trace-go"
+          ref: "tony/civisibility-native-api"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: external
+      - name: Build for macOS and iOS
+        run: |
+            # ******************** Build for macOS ********************
+            CGO_LDFLAGS_ALLOW=".*" GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-archive -ldflags '-s -w -extldflags "-static"' -o ./output/macos-arm64-libtestoptimization-static/libtestoptimization.a *.go
+            CGO_LDFLAGS_ALLOW=".*" GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-shared -ldflags '-s -w' -o ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib *.go
+            CGO_LDFLAGS_ALLOW=".*" GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-archive -ldflags '-s -w -extldflags "-static"' -o ./output/macos-x64-libtestoptimization-static/libtestoptimization.a *.go
+            CGO_LDFLAGS_ALLOW=".*" GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-shared -ldflags '-s -w' -o ./output/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib *.go
+            mkdir -p ./output/macos-libtestoptimization-static
+            lipo -create ./output/macos-arm64-libtestoptimization-static/libtestoptimization.a ./output/macos-x64-libtestoptimization-static/libtestoptimization.a -output ./output/macos-libtestoptimization-static/libtestoptimization.a
+            cp ./output/macos-arm64-libtestoptimization-static/libtestoptimization.h ./output/macos-libtestoptimization-static/libtestoptimization.h
+            7zz a -t7z ./output/macos-libtestoptimization-static.7z ./output/macos-libtestoptimization-static/*.*
+            sha256sum ./output/macos-libtestoptimization-static.7z > ./output/macos-libtestoptimization-static.7z.sha256sum
+            rm -r ./output/macos-libtestoptimization-static
+            mkdir -p ./output/macos-libtestoptimization-dynamic
+            lipo -create ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib ./output/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib -output ./output/macos-libtestoptimization-dynamic/libtestoptimization.dylib
+            cp ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.h ./output/macos-libtestoptimization-dynamic/libtestoptimization.h
+            7zz a -t7z ./output/macos-libtestoptimization-dynamic.7z ./output/macos-libtestoptimization-dynamic/*.*
+            sha256sum ./output/macos-libtestoptimization-dynamic.7z > ./output/macos-libtestoptimization-dynamic.7z.sha256sum
+            rm -r ./output/macos-libtestoptimization-dynamic
+            rm -r ./output/macos-arm64-libtestoptimization-static ./output/macos-arm64-libtestoptimization-dynamic ./output/macos-x64-libtestoptimization-static ./output/macos-x64-libtestoptimization-dynamic
+            # ******************** Build for iOS ********************
+            CGO_LDFLAGS_ALLOW=".*" GOOS=ios GOARCH=arm64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-archive -ldflags '-s -w -extldflags "-static"' -o ./output/ios-libtestoptimization-static/libtestoptimization.a *.go
+            7zz a -t7z ./output/ios-libtestoptimization-static.7z ./output/ios-libtestoptimization-static/*.*
+            sha256sum ./output/ios-libtestoptimization-static.7z > ./output/ios-libtestoptimization-static.7z.sha256sum
+            rm -r ./output/ios-libtestoptimization-static
+        working-directory: external/internal/civisibility/native
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-artifact
+          path: external/internal/civisibility/native/output/*.7z*
+
+  linux_arm64_job:
+    name: linux-arm64
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Checkout external repository
+        uses: actions/checkout@v4
+        with:
+          repository: "DataDog/dd-trace-go"
+          ref: "tony/civisibility-native-api"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: external
+      - name: Build and run linux-arm64
+        run: |
+            docker buildx build --platform linux/arm64 --build-arg GOARCH=arm64 --build-arg FILE_NAME=linux-arm64-libtestoptimization -t libtestoptimization-builder:arm64 -f ./Dockerfile ../../.. --load
+            docker run --rm -v ./output:/libtestoptimization libtestoptimization-builder:arm64
+        working-directory: external/internal/civisibility/native
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-arm64-artifact
+          path: external/internal/civisibility/native/output/*.7z*
+
+  linux_amd64_job:
+    name: linux-amd64
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout external repository
+        uses: actions/checkout@v4
+        with:
+          repository: "DataDog/dd-trace-go"
+          ref: "tony/civisibility-native-api"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: external
+      - name: Build and run linux-amd64
+        run: |
+            docker build --platform linux/amd64 --build-arg GOARCH=amd64 --build-arg FILE_NAME=linux-x64-libtestoptimization -t libtestoptimization-builder:amd64 -f ./Dockerfile ../../..
+            docker run --rm -v ./output:/libtestoptimization libtestoptimization-builder:amd64
+        working-directory: external/internal/civisibility/native
+      - name: Build and run android-arm64
+        run: |
+            docker build --platform linux/amd64 --build-arg GOARCH=arm64 --build-arg FILE_NAME=android-arm64-libtestoptimization -t libtestoptimization-builder:androidarm64 -f ./Dockerfile-android ../../..
+            docker run --rm -v ./output:/libtestoptimization libtestoptimization-builder:androidarm64
+        working-directory: external/internal/civisibility/native
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-amd64-artifact
+          path: external/internal/civisibility/native/output/*.7z*
+
+  windows_job:
+    name: windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout external repository
+        uses: actions/checkout@v4
+        with:
+          repository: "DataDog/dd-trace-go"
+          ref: "tony/civisibility-native-api"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: external
+      - name: Download MinGW toolchain
+        shell: pwsh
+        run: |
+          $url = "https://github.com/brechtsanders/winlibs_mingw/releases/download/14.2.0posix-12.0.0-ucrt-r3/winlibs-x86_64-posix-seh-gcc-14.2.0-llvm-19.1.7-mingw-w64ucrt-12.0.0-r3.zip"
+          $output = "$env:RUNNER_TEMP\mingw.zip"
+          Invoke-WebRequest -Uri $url -OutFile $output
+      - name: Install 7zip
+        shell: pwsh
+        run: choco install 7zip.portable -y
+      - name: Extract MinGW toolchain
+        shell: pwsh
+        run: |
+          $zipPath = "$env:RUNNER_TEMP\mingw.zip"
+          $extractPath = "$env:RUNNER_TEMP\mingw"
+          Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+          echo "MINGW_PATH=$env:RUNNER_TEMP\mingw" >> $env:GITHUB_ENV
+      - name: Build Windows libraries
+        shell: pwsh
+        run: |
+          $env:CC = "$env:MINGW_PATH\mingw64\bin\gcc.exe"
+          $env:CGO_ENABLED = "1"
+          Write-Host "Building windows static library"
+          go build -tags civisibility_native -buildmode=c-archive -o ./output/windows-x64-libtestoptimization-static/testoptimization.lib exports.go main.go
+          Write-Host "Building windows shared library"
+          go build -tags civisibility_native -buildmode=c-shared -o ./output/windows-x64-libtestoptimization-dynamic/testoptimization.dll exports.go main.go
+        working-directory: external/internal/civisibility/native
+      - name: Compress Windows libraries
+        shell: pwsh
+        run: |
+          Write-Host "Compressing static library"
+          7z a -t7z ./output/windows-x64-libtestoptimization-static.7z ./output/windows-x64-libtestoptimization-static/*.*
+          Get-FileHash -Path ./output/windows-x64-libtestoptimization-static.7z -Algorithm SHA256 | Out-File -FilePath ./output/windows-x64-libtestoptimization-static.7z.sha256sum
+          Write-Host "Compressing dynamic library"
+          7z a -t7z ./output/windows-x64-libtestoptimization-dynamic.7z ./output/windows-x64-libtestoptimization-dynamic/*.*
+          Get-FileHash -Path ./output/windows-x64-libtestoptimization-dynamic.7z -Algorithm SHA256 | Out-File -FilePath ./output/windows-x64-libtestoptimization-dynamic.7z.sha256sum
+          Remove-Item -Recurse -Force ./output/windows-x64-libtestoptimization-static
+          Remove-Item -Recurse -Force ./output/windows-x64-libtestoptimization-dynamic
+        working-directory: external/internal/civisibility/native
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifact
+          path: external/internal/civisibility/native/output/*.7z*
+
+  collect_artifacts:
+    name: Collect all artifacts
+    needs: [mac_job, linux_arm64_job, linux_amd64_job, windows_job]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download artifacts from mac job
+        uses: actions/download-artifact@v4
+        with:
+          name: mac-artifact
+          path: artifacts
+      - name: Download artifacts from linux-arm64 job
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-arm64-artifact
+          path: artifacts
+      - name: Download artifacts from linux-amd64 job
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-amd64-artifact
+          path: artifacts
+      - name: Download artifacts from windows job
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-artifact
+          path: artifacts
+      - name: Upload final artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-artifacts
+          path: artifacts/*.7z*
+          if-no-files-found: error
