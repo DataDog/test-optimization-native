@@ -1,0 +1,102 @@
+name: Rust SDK Tests
+
+on:
+    workflow_dispatch:
+    push:
+        branches: [ main ]
+        tags: ["v*"]
+        paths:
+            - 'sdks/rust/test-optimization-sdk/**'
+    pull_request:
+        branches: [ main ]
+        paths:
+            - 'sdks/rust/test-optimization-sdk/**'
+
+jobs:
+  linux-amd64-test:
+    name: Run Rust SDK Tests on Linux AMD64
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdks/rust/test-optimization-sdk
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build and run tests
+        run: |
+          docker build -t test-optimization-sdk-test .
+          docker run test-optimization-sdk-test
+
+  linux-arm64-test:
+    name: Run Rust SDK Tests on Linux ARM64
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdks/rust/test-optimization-sdk
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and run tests
+        run: |
+          docker buildx build --platform linux/arm64 -t test-optimization-sdk-test . --load
+          docker run test-optimization-sdk-test
+
+  macos-test:
+    name: Run Rust SDK Tests on macOS
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: sdks/rust/test-optimization-sdk
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+          components: rustfmt, clippy
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: rust-cache-macos
+
+      - name: Run tests
+        run: cargo test -- --nocapture
+
+  windows-test:
+    name: Run Rust SDK Tests on Windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: sdks/rust/test-optimization-sdk
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+          components: rustfmt, clippy
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: rust-cache-windows
+
+      - name: Run tests
+        run: cargo test -- --nocapture
