@@ -10,15 +10,18 @@ use std::time::Duration;
 
 #[test]
 fn complete() {
+    // Initialize library
+    TestOptimization::init_mock();
+
     // session
-    let session = TestSession::init_mock();
+    let session = TestSession::create(Some("cargo test"), None::<&str>);
     println!("Hello, world!");
 
-    println!("{:?}", session.get_settings());
-    println!("{:?}", session.get_flaky_test_retries_settings());
-    println!("{:?}", session.get_known_tests());
-    println!("{:?}", session.get_skippable_tests());
-    println!("{:?}", session.get_test_management_tests());
+    println!("{:?}", TestOptimization::get_settings());
+    println!("{:?}", TestOptimization::get_flaky_test_retries_settings());
+    println!("{:?}", TestOptimization::get_known_tests());
+    println!("{:?}", TestOptimization::get_skippable_tests());
+    println!("{:?}", TestOptimization::get_test_management_tests());
 
     println!("session id: {:?}", session.session_id);
 
@@ -112,6 +115,9 @@ fn complete() {
     println!("suite closed: {}", suite.close());
     println!("module closed: {}", module.close());
     session.close(0);
+    
+    // shutdown the library
+    TestOptimization::shutdown();
 
     let spans = MockTracer::get_finished_spans();
     for span in spans {
