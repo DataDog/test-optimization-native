@@ -12,6 +12,7 @@ mod test_suite;
 mod test;
 mod span;
 mod mock_tracer;
+mod test_optimization;
 
 pub use mock_tracer::*;
 pub use span::*;
@@ -19,3 +20,4 @@ pub use test::*;
 pub use test_module::*;
 pub use test_session::*;
 pub use test_suite::*;
+pub use test_optimization::*;
