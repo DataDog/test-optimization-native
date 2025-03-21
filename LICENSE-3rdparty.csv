@@ -1,3 +1,8 @@
 Component,Origin,License,Copyright
 dd-trace-go,https://github.com/DataDog/dd-trace-go,Apache-2.0 OR BSD-3-Clause,Copyright (c) 2021 Datadog <info@datadoghq.com>
 golang,https://go.googlesource.com/go,BSD-3-Clause,Copyright (c) 2009 The Go Authors
+rust,https://github.com/rust-lang/rust,Apache-2.0 OR MIT,Copyright (c) The Rust Project Contributors
+rustc-version-runtime-rs,https://github.com/seppo0010/rustc-version-runtime-rs,MIT,Copyright (c) 2015 Sebastian Waisbrot
+reqwest,https://github.com/seanmonstar/reqwest,Apache-2.0 OR MIT,Copyright (c) 2016-2025 Sean McArthur
+sevenz-rust,https://crates.io/crates/sevenz-rust,Apache-2.0,Copyright (c) @dyz1990
+cc,https://github.com/rust-lang/cc-rs,Apache-2.0 OR MIT,Copyright (c) 2014 Alex Crichton
