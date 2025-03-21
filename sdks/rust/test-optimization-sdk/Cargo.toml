@@ -1,0 +1,16 @@
+[package]
+name = "test-optimization-sdk"
+version = "0.0.1"
+edition = "2021"
+description = "Datadog's test optimization sdk"
+license = "Apache-2.0"
+
+[dependencies]
+rustc_version_runtime = "0.3.0"
+
+[build-dependencies]
+reqwest = { version = "0.12.9", features = ["blocking"] }
+sevenz-rust = "0.6.1"
+
+[target.'cfg(windows)'.build-dependencies]
+cc = "1.2.3"
