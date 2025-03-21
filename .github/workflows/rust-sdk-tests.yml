@@ -48,7 +48,7 @@ jobs:
 
       - name: Build and run tests
         run: |
-          docker buildx build --platform linux/arm64 -t test-optimization-sdk-test .
+          docker buildx build --platform linux/arm64 -t test-optimization-sdk-test . --load
           docker run test-optimization-sdk-test
 
   macos-test:
