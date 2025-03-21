@@ -20,7 +20,7 @@ fn main() {
 
     // Get the folder
     let url = format!(
-        "https://github.com/tonyredondo/rust-test-optimization-api/releases/download/v0.2.0-preview/{}",
+        "https://github.com/DataDog/test-optimization-native/releases/download/v0.0.1-preview/{}",
         lib_name
     );
     let lib_7z_path = PathBuf::from(out_dir.clone()).join("libtestoptimization.7z");
