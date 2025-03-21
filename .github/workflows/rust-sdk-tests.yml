@@ -1,0 +1,30 @@
+name: Rust SDK Tests
+
+on:
+    workflow_dispatch:
+    push:
+        branches: [ main ]
+        tags: ["v*"]
+        paths:
+            - 'sdks/rust/test-optimization-sdk/**'
+    pull_request:
+        branches: [ main ]
+        paths:
+            - 'sdks/rust/test-optimization-sdk/**'
+
+jobs:
+  linux-amd64-test:
+    name: Run Rust SDK Tests on Linux AMD64
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdks/rust/test-optimization-sdk
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build and run tests
+        run: |
+          docker build -t test-optimization-sdk-test .
+          docker run test-optimization-sdk-test 
