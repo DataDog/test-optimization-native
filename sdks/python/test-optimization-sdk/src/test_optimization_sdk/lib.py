@@ -218,7 +218,7 @@ ffi.cdef("""
     } topt_MockSpanArray;
 
     // Function declarations
-    Bool topt_initialize(topt_InitOptions* options);
+    Bool topt_initialize(topt_InitOptions options);
     Bool topt_shutdown(void);
     topt_SettingsResponse topt_get_settings(void);
     topt_FlakyTestRetriesSettings topt_get_flaky_test_retries_settings(void);

@@ -172,7 +172,7 @@ class TestOptimization:
         runtime_version_c = ffi.new("char[]", runtime_version.encode())
         working_directory_c = ffi.new("char[]", working_directory.encode()) if working_directory else ffi.NULL
 
-        # Build the initialization options struct
+        # Initialize with empty environment variables array
         init_options = ffi.new("topt_InitOptions*", {
             "language": language_name_c,
             "runtime_name": runtime_name_c,
@@ -189,7 +189,7 @@ class TestOptimization:
         })
 
         # Initialize the library with the provided options
-        return bool(topt_initialize(init_options))
+        return bool(topt_initialize(init_options[0]))  # Note: we dereference the pointer here
 
     @staticmethod
     def shutdown() -> bool:
