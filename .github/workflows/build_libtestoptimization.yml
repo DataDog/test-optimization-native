@@ -24,7 +24,10 @@ jobs:
           repository: "DataDog/dd-trace-go"
           ref: "tony/civisibility-native-api"
           token: ${{ secrets.GITHUB_TOKEN }}
-          path: external
+          path: external  
+      - name: Copy build files
+        run: |
+          cp -rf ./build/* external/internal/civisibility/native/
       - name: Build for macOS and iOS
         run: |
             # ******************** Build for macOS ********************
@@ -73,6 +76,9 @@ jobs:
           ref: "tony/civisibility-native-api"
           token: ${{ secrets.GITHUB_TOKEN }}
           path: external
+      - name: Copy build files
+        run: |
+            cp -rf ./build/* external/internal/civisibility/native/
       - name: Build and run linux-arm64
         run: |
             docker buildx build --platform linux/arm64 --build-arg GOARCH=arm64 --build-arg FILE_NAME=linux-arm64-libtestoptimization -t libtestoptimization-builder:arm64 -f ./Dockerfile ../../.. --load
@@ -96,6 +102,9 @@ jobs:
           ref: "tony/civisibility-native-api"
           token: ${{ secrets.GITHUB_TOKEN }}
           path: external
+      - name: Copy build files
+        run: |
+            cp -rf ./build/* external/internal/civisibility/native/
       - name: Build and run linux-amd64
         run: |
             docker build --platform linux/amd64 --build-arg GOARCH=amd64 --build-arg FILE_NAME=linux-x64-libtestoptimization -t libtestoptimization-builder:amd64 -f ./Dockerfile ../../..
@@ -124,6 +133,10 @@ jobs:
           ref: "tony/civisibility-native-api"
           token: ${{ secrets.GITHUB_TOKEN }}
           path: external
+      - name: Copy build files
+        shell: pwsh
+        run: |
+          Copy-Item -Path ".\build\*" -Destination "external\internal\civisibility\native" -Recurse -Force
       - name: Download MinGW toolchain
         shell: pwsh
         run: |
