@@ -22,12 +22,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: "DataDog/dd-trace-go"
-          ref: "tony/civisibility-native-api"
+          ref: "main"
           token: ${{ secrets.GITHUB_TOKEN }}
           path: external  
       - name: Copy build files
         run: |
+          # Create the directory if it doesn't exist
+          mkdir -p external/internal/civisibility/native
+          # Copy the build files
           cp -rf ./build/* external/internal/civisibility/native/
+          # Copy the native files
+          cp -rf ./native/* external/internal/civisibility/native/
       - name: Build for macOS and iOS
         run: |
             # ******************** Build for macOS ********************
@@ -73,12 +78,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: "DataDog/dd-trace-go"
-          ref: "tony/civisibility-native-api"
+          ref: "main"
           token: ${{ secrets.GITHUB_TOKEN }}
           path: external
       - name: Copy build files
         run: |
+            # Create the directory if it doesn't exist
+            mkdir -p external/internal/civisibility/native
+            # Copy the build files
             cp -rf ./build/* external/internal/civisibility/native/
+            # Copy the native files
+            cp -rf ./native/* external/internal/civisibility/native/
       - name: Build and run linux-arm64
         run: |
             docker buildx build --platform linux/arm64 --build-arg GOARCH=arm64 --build-arg FILE_NAME=linux-arm64-libtestoptimization -t libtestoptimization-builder:arm64 -f ./Dockerfile ../../.. --load
@@ -99,12 +109,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: "DataDog/dd-trace-go"
-          ref: "tony/civisibility-native-api"
+          ref: "main"
           token: ${{ secrets.GITHUB_TOKEN }}
           path: external
       - name: Copy build files
         run: |
+            # Create the directory if it doesn't exist
+            mkdir -p external/internal/civisibility/native
+            # Copy the build files
             cp -rf ./build/* external/internal/civisibility/native/
+            # Copy the native files
+            cp -rf ./native/* external/internal/civisibility/native/
       - name: Build and run linux-amd64
         run: |
             docker build --platform linux/amd64 --build-arg GOARCH=amd64 --build-arg FILE_NAME=linux-x64-libtestoptimization -t libtestoptimization-builder:amd64 -f ./Dockerfile ../../..
@@ -130,12 +145,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: "DataDog/dd-trace-go"
-          ref: "tony/civisibility-native-api"
+          ref: "main"
           token: ${{ secrets.GITHUB_TOKEN }}
           path: external
       - name: Copy build files
         shell: pwsh
         run: |
+          New-Item -Path "external\internal\civisibility\native" -ItemType Directory -Force
+          Copy-Item -Path ".\native\*" -Destination "external\internal\civisibility\native" -Recurse -Force
           Copy-Item -Path ".\build\*" -Destination "external\internal\civisibility\native" -Recurse -Force
       - name: Download MinGW toolchain
         shell: pwsh
