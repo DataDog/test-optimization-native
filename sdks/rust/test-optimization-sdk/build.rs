@@ -18,36 +18,47 @@ fn main() {
         format!("{}-{}-libtestoptimization-static.7z", platform, arch)
     };
 
-    // Get the folder
-    let url = format!(
-        "https://github.com/DataDog/test-optimization-native/releases/download/v0.0.1-preview/{}",
-        lib_name
-    );
-    let lib_7z_path = PathBuf::from(out_dir.clone()).join("libtestoptimization.7z");
-
-    // Download the shared library
-    println!("Downloading native library from: {}", url);
-    let response = reqwest::blocking::get(&url)
-        .unwrap_or_else(|e| {
-            eprintln!("Failed to download native library: {}", e);
-            process::exit(1);
-        })
-        .bytes()
-        .unwrap_or_else(|e| {
-            eprintln!("Failed to read response body: {}", e);
-            process::exit(1);
-        });
-
-    // Write the binary to the output directory
-    fs::write(&lib_7z_path, &response)
-        .unwrap_or_else(|e| {
-            eprintln!("Failed to write native library to disk: {}", e);
-            process::exit(1);
-        });
-
-    sevenz_rust::decompress_file(lib_7z_path, PathBuf::from(out_dir.clone())).expect("Failed to decompress native library");
-
     let lib_dir = PathBuf::from(out_dir.clone());
+    
+    // Check if library files already exist
+    let has_library = match platform {
+        "windows" => lib_dir.join("testoptimization.lib").exists(),
+        "linux" => lib_dir.join("libtestoptimization.a").exists(),
+        "macos" => lib_dir.join("libtestoptimization.a").exists(),
+        _ => false,
+    };
+
+    if !has_library {
+        // Get the folder
+        let url = format!(
+            "https://github.com/DataDog/test-optimization-native/releases/download/v0.0.1-preview/{}",
+            lib_name
+        );
+        let lib_7z_path = PathBuf::from(out_dir.clone()).join("libtestoptimization.7z");
+
+        // Download and extract library only if it doesn't exist
+        println!("Downloading native library from: {}", url);
+        let response = reqwest::blocking::get(&url)
+            .unwrap_or_else(|e| {
+                eprintln!("Failed to download native library: {}", e);
+                process::exit(1);
+            })
+            .bytes()
+            .unwrap_or_else(|e| {
+                eprintln!("Failed to read response body: {}", e);
+                process::exit(1);
+            });
+
+        fs::write(&lib_7z_path, &response)
+            .unwrap_or_else(|e| {
+                eprintln!("Failed to write native library to disk: {}", e);
+                process::exit(1);
+            });
+
+        sevenz_rust::decompress_file(lib_7z_path, lib_dir.clone()).expect("Failed to decompress native library");
+    }
+
+    // Continue with linking configuration
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
     println!("cargo:rustc-link-lib=static=testoptimization");
 
