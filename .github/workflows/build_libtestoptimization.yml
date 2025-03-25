@@ -1,4 +1,4 @@
-name: Build libtestoptimization
+name: Build Native Library
 
 on:
     workflow_dispatch:
@@ -36,10 +36,13 @@ jobs:
       - name: Build for macOS and iOS
         run: |
             # ******************** Build for macOS ********************
-            CGO_LDFLAGS_ALLOW=".*" GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-archive -ldflags '-s -w -extldflags "-static"' -o ./output/macos-arm64-libtestoptimization-static/libtestoptimization.a *.go
-            CGO_LDFLAGS_ALLOW=".*" GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-shared -ldflags '-s -w' -o ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib *.go
-            CGO_LDFLAGS_ALLOW=".*" GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-archive -ldflags '-s -w -extldflags "-static"' -o ./output/macos-x64-libtestoptimization-static/libtestoptimization.a *.go
-            CGO_LDFLAGS_ALLOW=".*" GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-shared -ldflags '-s -w' -o ./output/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib *.go
+            export CGO_CFLAGS="-mmacosx-version-min=11.0"
+            export GOOS=darwin
+            export CGO_ENABLED=1
+            GOARCH=arm64 go build -tags civisibility_native -buildmode=c-archive -ldflags '-s -w -extldflags "-static"' -o ./output/macos-arm64-libtestoptimization-static/libtestoptimization.a *.go
+            GOARCH=arm64 go build -tags civisibility_native -buildmode=c-shared -ldflags '-s -w' -o ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib *.go
+            GOARCH=amd64 go build -tags civisibility_native -buildmode=c-archive -ldflags '-s -w -extldflags "-static"' -o ./output/macos-x64-libtestoptimization-static/libtestoptimization.a *.go
+            GOARCH=amd64 go build -tags civisibility_native -buildmode=c-shared -ldflags '-s -w' -o ./output/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib *.go
             mkdir -p ./output/macos-libtestoptimization-static
             lipo -create ./output/macos-arm64-libtestoptimization-static/libtestoptimization.a ./output/macos-x64-libtestoptimization-static/libtestoptimization.a -output ./output/macos-libtestoptimization-static/libtestoptimization.a
             cp ./output/macos-arm64-libtestoptimization-static/libtestoptimization.h ./output/macos-libtestoptimization-static/libtestoptimization.h
@@ -54,7 +57,7 @@ jobs:
             rm -r ./output/macos-libtestoptimization-dynamic
             rm -r ./output/macos-arm64-libtestoptimization-static ./output/macos-arm64-libtestoptimization-dynamic ./output/macos-x64-libtestoptimization-static ./output/macos-x64-libtestoptimization-dynamic
             # ******************** Build for iOS ********************
-            CGO_LDFLAGS_ALLOW=".*" GOOS=ios GOARCH=arm64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-archive -ldflags '-s -w -extldflags "-static"' -o ./output/ios-libtestoptimization-static/libtestoptimization.a *.go
+            GOOS=ios GOARCH=arm64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-archive -ldflags '-s -w -extldflags "-static"' -o ./output/ios-libtestoptimization-static/libtestoptimization.a *.go
             7zz a -t7z ./output/ios-libtestoptimization-static.7z ./output/ios-libtestoptimization-static/*.*
             sha256sum ./output/ios-libtestoptimization-static.7z > ./output/ios-libtestoptimization-static.7z.sha256sum
             rm -r ./output/ios-libtestoptimization-static
@@ -202,6 +205,9 @@ jobs:
     name: Collect all artifacts
     needs: [mac_job, linux_arm64_job, linux_amd64_job, windows_job]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
       - name: Download artifacts from mac job
@@ -225,11 +231,25 @@ jobs:
           name: windows-artifact
           path: artifacts
       - name: Upload final artifacts
+        id: artifact-upload-step
         uses: actions/upload-artifact@v4
         with:
           name: all-artifacts
           path: artifacts/*.7z*
           if-no-files-found: error
+      - name: Trigger Python SDK tests
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: python-sdk-tests.yml
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          inputs: '{ "artifact_id": "${{ steps.artifact-upload-step.outputs.artifact-id }}" }'
+      - name: Trigger Rust SDK tests
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: rust-sdk-tests.yml
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          inputs: '{ "artifact_id": "${{ steps.artifact-upload-step.outputs.artifact-id }}" }'
+          
 
   release:
     name: Create Release and Upload Artifacts
