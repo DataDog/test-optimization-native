@@ -14,13 +14,13 @@ CGO_LDFLAGS_ALLOW=".*" GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -tags civ
 mkdir -p ./output/macos-libtestoptimization-static
 lipo -create ./output/macos-arm64-libtestoptimization-static/libtestoptimization.a ./output/macos-x64-libtestoptimization-static/libtestoptimization.a -output ./output/macos-libtestoptimization-static/libtestoptimization.a
 cp ./output/macos-arm64-libtestoptimization-static/libtestoptimization.h ./output/macos-libtestoptimization-static/libtestoptimization.h
-7zz a -t7z ./output/macos-libtestoptimization-static.7z ./output/macos-libtestoptimization-static/*.*
+7zz a -mf=off -t7z ./output/macos-libtestoptimization-static.7z ./output/macos-libtestoptimization-static/*.*
 sha256sum ./output/macos-libtestoptimization-static.7z > ./output/macos-libtestoptimization-static.7z.sha256sum
 rm -r ./output/macos-libtestoptimization-static
 mkdir -p ./output/macos-libtestoptimization-dynamic
 lipo -create ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib ./output/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib -output ./output/macos-libtestoptimization-dynamic/libtestoptimization.dylib
 cp ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.h ./output/macos-libtestoptimization-dynamic/libtestoptimization.h
-7zz a -t7z ./output/macos-libtestoptimization-dynamic.7z ./output/macos-libtestoptimization-dynamic/*.*
+7zz a -mf=off -t7z ./output/macos-libtestoptimization-dynamic.7z ./output/macos-libtestoptimization-dynamic/*.*
 sha256sum ./output/macos-libtestoptimization-dynamic.7z > ./output/macos-libtestoptimization-dynamic.7z.sha256sum
 rm -r ./output/macos-libtestoptimization-dynamic
 rm -r ./output/macos-arm64-libtestoptimization-static ./output/macos-arm64-libtestoptimization-dynamic ./output/macos-x64-libtestoptimization-static ./output/macos-x64-libtestoptimization-dynamic
@@ -39,7 +39,7 @@ docker run --rm -v ./output:/libtestoptimization libtestoptimization-builder:and
 
 echo "Building the static library for ios"
 CGO_LDFLAGS_ALLOW=".*" GOOS=ios GOARCH=arm64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-archive -ldflags '-s -w -extldflags "-static"' -o ./output/ios-libtestoptimization-static/libtestoptimization.a *.go
-7zz a -t7z ./output/ios-libtestoptimization-static.7z ./output/ios-libtestoptimization-static/*.*
+7zz a -mf=off -t7z ./output/ios-libtestoptimization-static.7z ./output/ios-libtestoptimization-static/*.*
 sha256sum ./output/ios-libtestoptimization-static.7z > ./output/ios-libtestoptimization-static.7z.sha256sum
 rm -r ./output/ios-libtestoptimization-static
 

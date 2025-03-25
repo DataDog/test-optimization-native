@@ -70,7 +70,7 @@ COPY --from=builder /app/internal/civisibility/native/output/dynamic/libtestopti
 COPY --from=builder /app/internal/civisibility/native/output/dynamic/libtestoptimization.h /output/dynamic/libtestoptimization.h
 
 # Compress both files into a 7z archive
-RUN 7z a /output/${FILE_NAME}-dynamic.7z /output/dynamic/*.*
+RUN 7z a -mf=off /output/${FILE_NAME}-dynamic.7z /output/dynamic/*.*
 # Create a SHA256 checksum file for the archive
 RUN sha256sum /output/${FILE_NAME}-dynamic.7z > /output/${FILE_NAME}-dynamic.7z.sha256sum
 

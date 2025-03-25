@@ -1,0 +1,111 @@
+name: Python SDK Tests
+
+on:
+    workflow_dispatch:
+    push:
+        branches: [ main ]
+        tags: ["v*"]
+        paths:
+            - 'sdks/python/test-optimization-sdk/**'
+    pull_request:
+        branches: [ main ]
+        paths:
+            - 'sdks/python/test-optimization-sdk/**'
+
+jobs:
+  linux-amd64-test:
+    name: Run Python SDK Tests on Linux AMD64
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdks/python/test-optimization-sdk
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest
+
+      - name: Run tests
+        run: pytest --capture=no
+
+  linux-arm64-test:
+    name: Run Python SDK Tests on Linux ARM64
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdks/python/test-optimization-sdk
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and run tests
+        run: |
+          docker buildx build --platform linux/arm64 -t python-test-optimization-sdk-test . --load
+          docker run python-test-optimization-sdk-test
+
+  macos-test:
+    name: Run Python SDK Tests on macOS
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: sdks/python/test-optimization-sdk
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest || true
+
+      - name: Run tests
+        run: pytest --capture=no
+
+  windows-test:
+    name: Run Python SDK Tests on Windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: sdks/python/test-optimization-sdk
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest
+
+      - name: Run tests
+        run: pytest --capture=no 
