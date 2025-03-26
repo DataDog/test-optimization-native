@@ -36,13 +36,18 @@ jobs:
       - name: Build for macOS and iOS
         run: |
             # ******************** Build for macOS ********************
-            export CGO_CFLAGS="-mmacosx-version-min=11.0"
+            export CGO_CFLAGS="-mmacosx-version-min=11.0 -O2 -Os -DNDEBUG -fdata-sections -ffunction-sections"
+            export CGO_LDFLAGS="-Wl,-x"
             export GOOS=darwin
             export CGO_ENABLED=1
-            GOARCH=arm64 go build -tags civisibility_native -buildmode=c-archive -ldflags '-s -w -extldflags "-static"' -o ./output/macos-arm64-libtestoptimization-static/libtestoptimization.a *.go
-            GOARCH=arm64 go build -tags civisibility_native -buildmode=c-shared -ldflags '-s -w' -o ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib *.go
-            GOARCH=amd64 go build -tags civisibility_native -buildmode=c-archive -ldflags '-s -w -extldflags "-static"' -o ./output/macos-x64-libtestoptimization-static/libtestoptimization.a *.go
-            GOARCH=amd64 go build -tags civisibility_native -buildmode=c-shared -ldflags '-s -w' -o ./output/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib *.go
+            GOARCH=arm64 go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o ./output/macos-arm64-libtestoptimization-static/libtestoptimization.a *.go
+            GOARCH=arm64 go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -gcflags="all=-l" -o ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib *.go
+            strip -x ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib
+
+            GOARCH=amd64 go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o ./output/macos-x64-libtestoptimization-static/libtestoptimization.a *.go
+            GOARCH=amd64 go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -gcflags="all=-l" -o ./output/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib *.go
+            strip -x ./output/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib
+            # *********************************************************
             mkdir -p ./output/macos-libtestoptimization-static
             lipo -create ./output/macos-arm64-libtestoptimization-static/libtestoptimization.a ./output/macos-x64-libtestoptimization-static/libtestoptimization.a -output ./output/macos-libtestoptimization-static/libtestoptimization.a
             cp ./output/macos-arm64-libtestoptimization-static/libtestoptimization.h ./output/macos-libtestoptimization-static/libtestoptimization.h
@@ -57,7 +62,7 @@ jobs:
             rm -r ./output/macos-libtestoptimization-dynamic
             rm -r ./output/macos-arm64-libtestoptimization-static ./output/macos-arm64-libtestoptimization-dynamic ./output/macos-x64-libtestoptimization-static ./output/macos-x64-libtestoptimization-dynamic
             # ******************** Build for iOS ********************
-            GOOS=ios GOARCH=arm64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-archive -ldflags '-s -w -extldflags "-static"' -o ./output/ios-libtestoptimization-static/libtestoptimization.a *.go
+            GOOS=ios GOARCH=arm64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o ./output/ios-libtestoptimization-static/libtestoptimization.a *.go
             7zz a -t7z ./output/ios-libtestoptimization-static.7z ./output/ios-libtestoptimization-static/*.*
             sha256sum ./output/ios-libtestoptimization-static.7z > ./output/ios-libtestoptimization-static.7z.sha256sum
             rm -r ./output/ios-libtestoptimization-static
@@ -178,10 +183,12 @@ jobs:
         run: |
           $env:CC = "$env:MINGW_PATH\mingw64\bin\gcc.exe"
           $env:CGO_ENABLED = "1"
+          $env:CGO_CFLAGS = "-O2 -Os -DNDEBUG"
+          $env:CGO_LDFLAGS = "-Wl,--gc-sections"
           Write-Host "Building windows static library"
-          go build -tags civisibility_native -buildmode=c-archive -o ./output/windows-x64-libtestoptimization-static/testoptimization.lib exports.go main.go
+          go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -o ./output/windows-x64-libtestoptimization-static/testoptimization.lib exports.go main.go
           Write-Host "Building windows shared library"
-          go build -tags civisibility_native -buildmode=c-shared -o ./output/windows-x64-libtestoptimization-dynamic/testoptimization.dll exports.go main.go
+          go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -o ./output/windows-x64-libtestoptimization-dynamic/testoptimization.dll exports.go main.go
         working-directory: external/internal/civisibility/native
       - name: Compress Windows libraries
         shell: pwsh

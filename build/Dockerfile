@@ -2,17 +2,18 @@
 FROM golang:1.24-bullseye AS builder
 
 # Install dependencies
-RUN apt-get update && apt-get install -y gcc
+RUN apt-get update && apt-get install -y gcc binutils
 
 # Argument can be set during build time with --build-arg GOARCH=arm64
 ARG GOARCH=amd64
 
 # Configure environment variables for CGO, operating system, architecture, and compiler
-ENV CGO_LDFLAGS_ALLOW=".*" \
-    CGO_ENABLED=1 \
+ENV CGO_ENABLED=1 \
     GOOS=linux \
     GOARCH=$GOARCH \
-    CC=gcc
+    CC=gcc \
+    CGO_CFLAGS="-O2 -Os -s -DNDEBUG -fdata-sections -ffunction-sections" \
+    CGO_LDFLAGS="-s -Wl,--gc-sections"
 
 WORKDIR /app
 
@@ -22,8 +23,10 @@ COPY . .
 WORKDIR /app/internal/civisibility/native
 
 # Build the library
-RUN go build -tags civisibility_native -buildmode=c-archive -o ./output/static/libtestoptimization.a *.go
-RUN go build -tags civisibility_native -buildmode=c-shared -o ./output/dynamic/libtestoptimization.so *.go
+RUN go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o ./output/static/libtestoptimization.a *.go
+RUN strip --strip-unneeded ./output/static/libtestoptimization.a
+RUN go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -gcflags="all=-l" -o ./output/dynamic/libtestoptimization.so *.go
+RUN strip --strip-unneeded ./output/dynamic/libtestoptimization.so
 
 # Stage 2: Extract the library
 FROM alpine:latest

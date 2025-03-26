@@ -7,10 +7,15 @@ mkdir -p ./output
 
 echo "Building the library for macos"
 #it requires brew install sevenzip
-CGO_LDFLAGS_ALLOW=".*" GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-archive -ldflags '-s -w -extldflags "-static"' -o ./output/macos-arm64-libtestoptimization-static/libtestoptimization.a *.go
-CGO_LDFLAGS_ALLOW=".*" GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-shared -ldflags '-s -w' -o ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib *.go
-CGO_LDFLAGS_ALLOW=".*" GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-archive -ldflags '-s -w -extldflags "-static"' -o ./output/macos-x64-libtestoptimization-static/libtestoptimization.a *.go
-CGO_LDFLAGS_ALLOW=".*" GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-shared -ldflags '-s -w' -o ./output/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib *.go
+
+export CGO_CFLAGS="-mmacosx-version-min=11.0 -O2 -Os -DNDEBUG -fdata-sections -ffunction-sections"
+export CGO_LDFLAGS="-Wl,-x"
+export GOOS=darwin
+export CGO_ENABLED=1
+GOARCH=arm64 go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o ./output/macos-arm64-libtestoptimization-static/libtestoptimization.a *.go
+GOARCH=arm64 go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -gcflags="all=-l" -o ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib *.go
+GOARCH=amd64 go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o ./output/macos-x64-libtestoptimization-static/libtestoptimization.a *.go
+GOARCH=amd64 go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -gcflags="all=-l" -o ./output/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib *.go
 mkdir -p ./output/macos-libtestoptimization-static
 lipo -create ./output/macos-arm64-libtestoptimization-static/libtestoptimization.a ./output/macos-x64-libtestoptimization-static/libtestoptimization.a -output ./output/macos-libtestoptimization-static/libtestoptimization.a
 cp ./output/macos-arm64-libtestoptimization-static/libtestoptimization.h ./output/macos-libtestoptimization-static/libtestoptimization.h
@@ -38,7 +43,7 @@ docker build --platform linux/amd64 --build-arg GOARCH=arm64 --build-arg FILE_NA
 docker run --rm -v ./output:/libtestoptimization libtestoptimization-builder:androidarm64
 
 echo "Building the static library for ios"
-CGO_LDFLAGS_ALLOW=".*" GOOS=ios GOARCH=arm64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-archive -ldflags '-s -w -extldflags "-static"' -o ./output/ios-libtestoptimization-static/libtestoptimization.a *.go
+GOOS=ios GOARCH=arm64 go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o ./output/ios-libtestoptimization-static/libtestoptimization.a *.go
 7zz a -mf=off -t7z ./output/ios-libtestoptimization-static.7z ./output/ios-libtestoptimization-static/*.*
 sha256sum ./output/ios-libtestoptimization-static.7z > ./output/ios-libtestoptimization-static.7z.sha256sum
 rm -r ./output/ios-libtestoptimization-static
