@@ -178,6 +178,19 @@ jobs:
           $extractPath = "$env:RUNNER_TEMP\mingw"
           Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
           echo "MINGW_PATH=$env:RUNNER_TEMP\mingw" >> $env:GITHUB_ENV
+      - name: Install UPX 5.0.0
+        shell: pwsh
+        run: |
+          $version = "5.0.0"
+          $url = "https://github.com/upx/upx/releases/download/v$version/upx-$version-win64.zip"
+          $zipPath = "$env:RUNNER_TEMP\upx.zip"
+          $extractPath = "$env:RUNNER_TEMP\upx"
+
+          Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
+          Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+
+          $upxExe = Join-Path $extractPath "upx-$version-win64\upx.exe"
+          echo "UPX_PATH=$upxExe" >> $env:GITHUB_ENV
       - name: Build Windows libraries
         shell: pwsh
         run: |
@@ -189,6 +202,8 @@ jobs:
           go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -o ./output/windows-x64-libtestoptimization-static/testoptimization.lib exports.go main.go
           Write-Host "Building windows shared library"
           go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -o ./output/windows-x64-libtestoptimization-dynamic/testoptimization.dll exports.go main.go
+          Write-Host "Compressing DLL with UPX"
+          & "$env:UPX_PATH" --best --lzma ./output/windows-x64-libtestoptimization-dynamic/testoptimization.dll
         working-directory: external/internal/civisibility/native
       - name: Compress Windows libraries
         shell: pwsh
