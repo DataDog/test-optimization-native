@@ -249,7 +249,21 @@ jobs:
           workflow: rust-sdk-tests.yml
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           inputs: '{ "artifact_id": "${{ steps.artifact-upload-step.outputs.artifact-id }}" }'
-          
+      - name: Wait for trigger Python SDK tests start
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          check-name: 'Download Build Artifacts for Python SDK Tests'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+      - name: Wait for trigger Rust SDK tests start
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          check-name: 'Download Build Artifacts for Rust SDK Tests'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
 
   release:
     name: Create Release and Upload Artifacts
