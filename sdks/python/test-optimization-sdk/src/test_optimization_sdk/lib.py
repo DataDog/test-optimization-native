@@ -7,6 +7,7 @@ This module provides the interface between Python and the native C library.
 import os
 import platform
 from cffi import FFI
+from .constants import TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH
 
 ffi = FFI()
 
@@ -272,10 +273,6 @@ ffi.cdef("""
 
 def _get_library_path() -> str:
     """Get the path to the native library."""
-    # First try to find the library in our package's lib directory
-    package_dir = os.path.dirname(os.path.abspath(__file__))
-    lib_dir = os.path.join(package_dir, "lib")
-    
     # Get the appropriate library name based on the platform
     system = platform.system().lower()
     if system == "darwin":
@@ -284,6 +281,17 @@ def _get_library_path() -> str:
         lib_name = "testoptimization.dll"
     else:  # Linux
         lib_name = "libtestoptimization.so"
+    
+    # First check if a custom search path is provided
+    custom_search_path = os.environ.get(TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH)
+    if custom_search_path:
+        lib_path = os.path.join(custom_search_path, lib_name)
+        if os.path.exists(lib_path):
+            return lib_path
+    
+    # Then try to find the library in our package's lib directory
+    package_dir = os.path.dirname(os.path.abspath(__file__))
+    lib_dir = os.path.join(package_dir, "lib")
     
     # Look for the library in our package's lib directory
     lib_path = os.path.join(lib_dir, lib_name)
@@ -301,6 +309,7 @@ def _get_library_path() -> str:
 # Load the library
 try:
     lib_path = _get_library_path()
+    print(f"Loading test optimization library from {lib_path}")
     lib = ffi.dlopen(lib_path)
 except OSError as e:
     raise RuntimeError(f"Failed to load test optimization library from {lib_path}: {e}")

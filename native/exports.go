@@ -8,10 +8,6 @@
 
 package main
 
-// #cgo darwin CFLAGS: -mmacosx-version-min=11.0
-// #cgo darwin LDFLAGS: -s -w
-// #cgo windows CFLAGS: -Os
-// #cgo windows LDFLAGS: -Os
 // #include <stdlib.h>
 /*
 // Bool is a typedef for unsigned char used as a boolean type.

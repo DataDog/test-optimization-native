@@ -7,30 +7,10 @@ This SDK provides integration with Datadog's Test Optimization features for Pyth
 # Auto-installation logic MUST come before any other imports
 import os
 from pathlib import Path
+from .native_lib import setup_native_library
 
-# Check if we need to install the native library
-def _ensure_native_library_installed():
-    """Install native library if not already present"""
-    # Check if we've already installed the library
-    package_dir = Path(__file__).parent
-    lib_dir = package_dir / "lib"
-    
-    # Check if any library files exist
-    has_library = (
-        lib_dir.exists() and 
-        (any(lib_dir.glob("*.so")) or any(lib_dir.glob("*.dll")) or any(lib_dir.glob("*.dylib")))
-    )
-    
-    if has_library:
-        return  # Library already installed
-    
-    # If not installed, run the setup
-    from .native_lib import setup_native_library
-    setup_native_library()
-
-# Run the check when the module is imported, but only if not explicitly disabled
-if not os.environ.get("TEST_OPTIMIZATION_SDK_SKIP_NATIVE_INSTALL"):
-    _ensure_native_library_installed()
+# Run the native library setup
+setup_native_library()
 
 # Only import other modules AFTER the native library is set up
 from test_optimization_sdk.test_optimization import TestOptimization
@@ -40,6 +20,11 @@ from test_optimization_sdk.test_suite import TestSuite
 from test_optimization_sdk.test import Test, TestStatus
 from test_optimization_sdk.span import Span
 from test_optimization_sdk.mock_tracer import MockTracer, MockSpan
+from test_optimization_sdk.constants import (
+    TEST_OPTIMIZATION_SDK_SKIP_NATIVE_INSTALL,
+    TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH,
+    TEST_OPTIMIZATION_DOWNLOAD_URL_FORMAT,
+)
 
 __version__ = "0.0.1"
 
@@ -53,4 +38,7 @@ __all__ = [
     "Span",
     "MockTracer",
     "MockSpan",
+    "TEST_OPTIMIZATION_SDK_SKIP_NATIVE_INSTALL",
+    "TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH",
+    "TEST_OPTIMIZATION_DOWNLOAD_URL_FORMAT",
 ] 

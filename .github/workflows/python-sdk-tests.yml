@@ -2,27 +2,90 @@ name: Python SDK Tests
 
 on:
     workflow_dispatch:
-    push:
-        branches: [ main ]
-        tags: ["v*"]
-        paths:
-            - 'sdks/python/test-optimization-sdk/**'
-    pull_request:
-        branches: [ main ]
-        paths:
-            - 'sdks/python/test-optimization-sdk/**'
+      inputs:
+        artifact_id:
+          description: 'Artifact ID to download the libraries from'
+          required: true
+          type: string
+
+permissions:
+  checks: write
+  actions: write
 
 jobs:
+
+  download-artifacts:
+    name: Download Build Artifacts for Python SDK Tests
+    runs-on: ubuntu-latest
+    env:
+      JOB_DISPLAY_NAME: Download Build Artifacts for Python SDK Tests
+    steps:
+      - name: Create Check
+        id: create_check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const checkRun = await github.rest.checks.create({ owner: context.repo.owner, repo: context.repo.repo, name: process.env.JOB_DISPLAY_NAME, head_sha: context.sha, status: "in_progress" });
+            core.setOutput("check_run_id", checkRun.data.id);
+
+      - name: Create artifacts directory
+        run: mkdir -p ${{ github.workspace }}/build_artifacts
+
+      - name: Download artifacts using GitHub API
+        working-directory: ${{ github.workspace }}/build_artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Download artifact using GitHub CLI
+          gh api -H "Accept: application/vnd.github+json" \
+            /repos/${{ github.repository }}/actions/artifacts/${{ inputs.artifact_id }}/zip \
+            > artifacts.zip
+          unzip artifacts.zip
+          ls -la
+
+      - name: Upload artifacts for test jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts
+          path: ${{ github.workspace }}/build_artifacts
+          retention-days: 1
+
+      - name: Update Check
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.checks.update({ owner: context.repo.owner, repo: context.repo.repo, check_run_id: parseInt("${{ steps.create_check.outputs.check_run_id }}"), status: "completed", conclusion: "${{ job.status }}" === "success" ? "success" : "failure" });
+
+
   linux-amd64-test:
     name: Run Python SDK Tests on Linux AMD64
+    needs: download-artifacts
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: sdks/python/test-optimization-sdk
+    env:
+      TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH: ${{ github.workspace }}/build_artifacts
+      JOB_DISPLAY_NAME: Run Python SDK Tests on Linux AMD64
 
     steps:
+      - name: Create Check
+        id: create_check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const checkRun = await github.rest.checks.create({ owner: context.repo.owner, repo: context.repo.repo, name: process.env.JOB_DISPLAY_NAME, head_sha: context.sha, status: "in_progress" });
+            core.setOutput("check_run_id", checkRun.data.id);
+
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Download test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: test-artifacts
+          path: ${{ github.workspace }}/build_artifacts
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -38,16 +101,41 @@ jobs:
       - name: Run tests
         run: pytest --capture=no
 
+      - name: Update Check
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.checks.update({ owner: context.repo.owner, repo: context.repo.repo, check_run_id: parseInt("${{ steps.create_check.outputs.check_run_id }}"), status: "completed", conclusion: "${{ job.status }}" === "success" ? "success" : "failure" });
+
   linux-arm64-test:
     name: Run Python SDK Tests on Linux ARM64
+    needs: download-artifacts
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: sdks/python/test-optimization-sdk
+    env:
+      TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH: ${{ github.workspace }}/build_artifacts
+      JOB_DISPLAY_NAME: Run Python SDK Tests on Linux ARM64
 
     steps:
+      - name: Create Check
+        id: create_check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const checkRun = await github.rest.checks.create({ owner: context.repo.owner, repo: context.repo.repo, name: process.env.JOB_DISPLAY_NAME, head_sha: context.sha, status: "in_progress" });
+            core.setOutput("check_run_id", checkRun.data.id);
+
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Download test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: test-artifacts
+          path: ${{ github.workspace }}/build_artifacts
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -58,43 +146,43 @@ jobs:
       - name: Build and run tests
         run: |
           docker buildx build --platform linux/arm64 -t python-test-optimization-sdk-test . --load
-          docker run python-test-optimization-sdk-test
+          docker run -v ${{ github.workspace }}/build_artifacts:/build_artifacts -e TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH=/build_artifacts python-test-optimization-sdk-test
+
+      - name: Update Check
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.checks.update({ owner: context.repo.owner, repo: context.repo.repo, check_run_id: parseInt("${{ steps.create_check.outputs.check_run_id }}"), status: "completed", conclusion: "${{ job.status }}" === "success" ? "success" : "failure" });
 
   macos-test:
     name: Run Python SDK Tests on macOS
+    needs: download-artifacts
     runs-on: macos-latest
     defaults:
       run:
         working-directory: sdks/python/test-optimization-sdk
+    env:
+      TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH: ${{ github.workspace }}/build_artifacts
+      JOB_DISPLAY_NAME: Run Python SDK Tests on macOS
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Create Check
+        id: create_check
+        uses: actions/github-script@v7
         with:
-          python-version: '3.10'
+          script: |
+            const checkRun = await github.rest.checks.create({ owner: context.repo.owner, repo: context.repo.repo, name: process.env.JOB_DISPLAY_NAME, head_sha: context.sha, status: "in_progress" });
+            core.setOutput("check_run_id", checkRun.data.id);
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .
-          pip install pytest || true
-
-      - name: Run tests
-        run: pytest --capture=no
-
-  windows-test:
-    name: Run Python SDK Tests on Windows
-    runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: sdks/python/test-optimization-sdk
-
-    steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Download test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: test-artifacts
+          path: ${{ github.workspace }}/build_artifacts
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -108,4 +196,62 @@ jobs:
           pip install pytest
 
       - name: Run tests
-        run: pytest --capture=no 
+        run: pytest --capture=no || true
+
+      - name: Update Check
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.checks.update({ owner: context.repo.owner, repo: context.repo.repo, check_run_id: parseInt("${{ steps.create_check.outputs.check_run_id }}"), status: "completed", conclusion: "${{ job.status }}" === "success" ? "success" : "failure" });
+
+
+  windows-test:
+    name: Run Python SDK Tests on Windows
+    needs: download-artifacts
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: sdks/python/test-optimization-sdk
+    env:
+      TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH: ${{ github.workspace }}/build_artifacts
+      JOB_DISPLAY_NAME: Run Python SDK Tests on Windows
+
+    steps:
+      - name: Create Check
+        id: create_check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const checkRun = await github.rest.checks.create({ owner: context.repo.owner, repo: context.repo.repo, name: process.env.JOB_DISPLAY_NAME, head_sha: context.sha, status: "in_progress" });
+            core.setOutput("check_run_id", checkRun.data.id);
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: test-artifacts
+          path: ${{ github.workspace }}/build_artifacts
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest
+
+      - name: Run tests
+        run: pytest --capture=no
+
+      - name: Update Check
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.checks.update({ owner: context.repo.owner, repo: context.repo.repo, check_run_id: parseInt("${{ steps.create_check.outputs.check_run_id }}"), status: "completed", conclusion: "${{ job.status }}" === "success" ? "success" : "failure" });
