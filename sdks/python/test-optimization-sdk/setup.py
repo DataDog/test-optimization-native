@@ -16,7 +16,6 @@ setup(
     install_requires=[
         "cffi>=1.15.0",
         "typing-extensions>=4.0.0",
-        "py7zr>=0.20.0",  # Required for native library extraction
     ],
     extras_require={
         "dev": [

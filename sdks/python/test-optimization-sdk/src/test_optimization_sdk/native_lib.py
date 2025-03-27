@@ -26,9 +26,9 @@ def get_library_filename():
         arch = "x64"
     
     if system == "macos":
-        return f"{system}-libtestoptimization-dynamic.7z"
+        return f"{system}-libtestoptimization-dynamic.zip"
     else:
-        return f"{system}-{arch}-libtestoptimization-dynamic.7z"
+        return f"{system}-{arch}-libtestoptimization-dynamic.zip"
 
 def download_native_library():
     """Download the native library and extract it to the appropriate location."""
@@ -51,10 +51,9 @@ def download_native_library():
     
     # Extract the library
     try:
-        import py7zr
-        with py7zr.SevenZipFile(lib_dir / lib_filename, 'r') as archive:
+        with zipfile.ZipFile(lib_dir / lib_filename, 'r') as archive:
             archive.extractall(lib_dir)
-        # Clean up the 7z file
+        # Clean up the zip file
         (lib_dir / lib_filename).unlink()
     except Exception as e:
         print(f"Failed to extract native library: {e}", file=sys.stderr)
@@ -73,18 +72,17 @@ def setup_native_library():
         if any(custom_path.glob("*.so")) or any(custom_path.glob("*.dll")) or any(custom_path.glob("*.dylib")):
             return  # Library already exists in custom path
             
-        # Then check for .7z files
+        # Then check for .zip files
         lib_filename = get_library_filename()
-        lib_7z_path = custom_path / lib_filename
-        if lib_7z_path.exists():
+        lib_zip_path = custom_path / lib_filename
+        if lib_zip_path.exists():
             try:
-                print(f"Extracting native library from {lib_7z_path}")
-                import py7zr
-                with py7zr.SevenZipFile(lib_7z_path, 'r') as archive:
+                print(f"Extracting native library from {lib_zip_path}")
+                with zipfile.ZipFile(lib_zip_path, 'r') as archive:
                     archive.extractall(custom_path)
-                return  # Successfully extracted from .7z
+                return  # Successfully extracted from .zip
             except Exception as e:
-                print(f"Failed to extract native library from {lib_7z_path}: {e}", file=sys.stderr)
+                print(f"Failed to extract native library from {lib_zip_path}: {e}", file=sys.stderr)
                 sys.exit(1)
         return  # No library found in custom path
     
