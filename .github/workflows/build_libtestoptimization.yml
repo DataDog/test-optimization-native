@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
             go-version: '1.24'
-      - run: brew install sevenzip coreutils
+      - run: brew install coreutils
       - name: Checkout external repository
         uses: actions/checkout@v4
         with:
@@ -51,27 +51,27 @@ jobs:
             mkdir -p ./output/macos-libtestoptimization-static
             lipo -create ./output/macos-arm64-libtestoptimization-static/libtestoptimization.a ./output/macos-x64-libtestoptimization-static/libtestoptimization.a -output ./output/macos-libtestoptimization-static/libtestoptimization.a
             cp ./output/macos-arm64-libtestoptimization-static/libtestoptimization.h ./output/macos-libtestoptimization-static/libtestoptimization.h
-            7zz a -t7z ./output/macos-libtestoptimization-static.7z ./output/macos-libtestoptimization-static/*.*
-            sha256sum ./output/macos-libtestoptimization-static.7z > ./output/macos-libtestoptimization-static.7z.sha256sum
+            zip -j -9 ./output/macos-libtestoptimization-static.zip ./output/macos-libtestoptimization-static/*.*
+            sha256sum ./output/macos-libtestoptimization-static.zip > ./output/macos-libtestoptimization-static.zip.sha256sum
             rm -r ./output/macos-libtestoptimization-static
             mkdir -p ./output/macos-libtestoptimization-dynamic
             lipo -create ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib ./output/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib -output ./output/macos-libtestoptimization-dynamic/libtestoptimization.dylib
             cp ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.h ./output/macos-libtestoptimization-dynamic/libtestoptimization.h
-            7zz a -t7z ./output/macos-libtestoptimization-dynamic.7z ./output/macos-libtestoptimization-dynamic/*.*
-            sha256sum ./output/macos-libtestoptimization-dynamic.7z > ./output/macos-libtestoptimization-dynamic.7z.sha256sum
+            zip -j -9 ./output/macos-libtestoptimization-dynamic.zip ./output/macos-libtestoptimization-dynamic/*.*
+            sha256sum ./output/macos-libtestoptimization-dynamic.zip > ./output/macos-libtestoptimization-dynamic.zip.sha256sum
             rm -r ./output/macos-libtestoptimization-dynamic
             rm -r ./output/macos-arm64-libtestoptimization-static ./output/macos-arm64-libtestoptimization-dynamic ./output/macos-x64-libtestoptimization-static ./output/macos-x64-libtestoptimization-dynamic
             # ******************** Build for iOS ********************
             GOOS=ios GOARCH=arm64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o ./output/ios-libtestoptimization-static/libtestoptimization.a *.go
-            7zz a -t7z ./output/ios-libtestoptimization-static.7z ./output/ios-libtestoptimization-static/*.*
-            sha256sum ./output/ios-libtestoptimization-static.7z > ./output/ios-libtestoptimization-static.7z.sha256sum
+            zip -j -9 ./output/ios-libtestoptimization-static.zip ./output/ios-libtestoptimization-static/*.*
+            sha256sum ./output/ios-libtestoptimization-static.zip > ./output/ios-libtestoptimization-static.zip.sha256sum
             rm -r ./output/ios-libtestoptimization-static
         working-directory: external/internal/civisibility/native
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: mac-artifact
-          path: external/internal/civisibility/native/output/*.7z*
+          path: external/internal/civisibility/native/output/*.zip*
 
   linux_arm64_job:
     name: linux-arm64
@@ -106,7 +106,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-arm64-artifact
-          path: external/internal/civisibility/native/output/*.7z*
+          path: external/internal/civisibility/native/output/*.zip*
 
   linux_amd64_job:
     name: linux-amd64
@@ -142,7 +142,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-amd64-artifact
-          path: external/internal/civisibility/native/output/*.7z*
+          path: external/internal/civisibility/native/output/*.zip*
 
   windows_job:
     name: windows
@@ -168,9 +168,6 @@ jobs:
           $url = "https://github.com/brechtsanders/winlibs_mingw/releases/download/14.2.0posix-12.0.0-ucrt-r3/winlibs-x86_64-posix-seh-gcc-14.2.0-llvm-19.1.7-mingw-w64ucrt-12.0.0-r3.zip"
           $output = "$env:RUNNER_TEMP\mingw.zip"
           Invoke-WebRequest -Uri $url -OutFile $output
-      - name: Install 7zip
-        shell: pwsh
-        run: choco install 7zip.portable -y
       - name: Extract MinGW toolchain
         shell: pwsh
         run: |
@@ -209,11 +206,11 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Compressing static library"
-          7z a -t7z ./output/windows-x64-libtestoptimization-static.7z ./output/windows-x64-libtestoptimization-static/*.*
-          Get-FileHash -Path ./output/windows-x64-libtestoptimization-static.7z -Algorithm SHA256 | Out-File -FilePath ./output/windows-x64-libtestoptimization-static.7z.sha256sum
+          Compress-Archive -Path ./output/windows-x64-libtestoptimization-static/*.* -DestinationPath ./output/windows-x64-libtestoptimization-static.zip -Force
+          Get-FileHash -Path ./output/windows-x64-libtestoptimization-static.zip -Algorithm SHA256 | Out-File -FilePath ./output/windows-x64-libtestoptimization-static.zip.sha256sum
           Write-Host "Compressing dynamic library"
-          7z a -t7z ./output/windows-x64-libtestoptimization-dynamic.7z ./output/windows-x64-libtestoptimization-dynamic/*.*
-          Get-FileHash -Path ./output/windows-x64-libtestoptimization-dynamic.7z -Algorithm SHA256 | Out-File -FilePath ./output/windows-x64-libtestoptimization-dynamic.7z.sha256sum
+          Compress-Archive -Path ./output/windows-x64-libtestoptimization-dynamic/*.* -DestinationPath ./output/windows-x64-libtestoptimization-dynamic.zip -Force
+          Get-FileHash -Path ./output/windows-x64-libtestoptimization-dynamic.zip -Algorithm SHA256 | Out-File -FilePath ./output/windows-x64-libtestoptimization-dynamic.zip.sha256sum
           Remove-Item -Recurse -Force ./output/windows-x64-libtestoptimization-static
           Remove-Item -Recurse -Force ./output/windows-x64-libtestoptimization-dynamic
         working-directory: external/internal/civisibility/native
@@ -221,7 +218,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-artifact
-          path: external/internal/civisibility/native/output/*.7z*
+          path: external/internal/civisibility/native/output/*.zip*
 
   collect_artifacts:
     name: Collect all artifacts
@@ -257,7 +254,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: all-artifacts
-          path: artifacts/*.7z*
+          path: artifacts/*.zip*
           if-no-files-found: error
       - name: Trigger Python SDK tests
         uses: benc-uk/workflow-dispatch@v1
@@ -304,7 +301,7 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release_artifacts/*.7z*
+          files: release_artifacts/*.zip*
           draft: false
           prerelease: false
           

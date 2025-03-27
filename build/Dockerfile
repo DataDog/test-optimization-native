@@ -34,8 +34,8 @@ FROM alpine:latest
 # Build arguments for the final archive names; you can override these during build
 ARG FILE_NAME=libtestoptimization
 
-# Install p7zip for compression
-RUN apk add --no-cache p7zip
+# Install zip for compression
+RUN apk add --no-cache zip
 
 # Create the output folder
 RUN mkdir -p /output
@@ -46,12 +46,12 @@ COPY --from=builder /app/internal/civisibility/native/output/static/libtestoptim
 COPY --from=builder /app/internal/civisibility/native/output/dynamic/libtestoptimization.so /output/dynamic/libtestoptimization.so
 COPY --from=builder /app/internal/civisibility/native/output/dynamic/libtestoptimization.h /output/dynamic/libtestoptimization.h
 
-# Compress both files into a 7z archive
-RUN 7z a -mf=off /output/${FILE_NAME}-static.7z /output/static/*.*
-RUN 7z a -mf=off /output/${FILE_NAME}-dynamic.7z /output/dynamic/*.*
+# Compress both files into zip archives
+RUN cd /output/static && zip -j -9 ../${FILE_NAME}-static.zip *.*
+RUN cd /output/dynamic && zip -j -9 ../${FILE_NAME}-dynamic.zip *.*
 # Create a SHA256 checksum file for the archive
-RUN sha256sum /output/${FILE_NAME}-static.7z > /output/${FILE_NAME}-static.7z.sha256sum
-RUN sha256sum /output/${FILE_NAME}-dynamic.7z > /output/${FILE_NAME}-dynamic.7z.sha256sum
+RUN sha256sum /output/${FILE_NAME}-static.zip > /output/${FILE_NAME}-static.zip.sha256sum
+RUN sha256sum /output/${FILE_NAME}-dynamic.zip > /output/${FILE_NAME}-dynamic.zip.sha256sum
 
 RUN rm -r /output/static /output/dynamic
 

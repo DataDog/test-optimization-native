@@ -8,7 +8,7 @@ use std::{env, fs, process};
 
 const TEST_OPTIMIZATION_SDK_SKIP_NATIVE_INSTALL: &str = "TEST_OPTIMIZATION_SDK_SKIP_NATIVE_INSTALL";
 const TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH: &str = "TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH";
-const TEST_OPTIMIZATION_DOWNLOAD_URL_FORMAT: &str = "https://github.com/DataDog/test-optimization-native/releases/download/v0.0.1-preview/";
+const TEST_OPTIMIZATION_DOWNLOAD_URL_FORMAT: &str = "https://github.com/DataDog/test-optimization-native/releases/download/v0.0.2-preview/";
 
 fn main() {
     let target = env::var("TARGET").expect("Cargo did not provide TARGET");
@@ -17,9 +17,9 @@ fn main() {
     let arch = if target.contains("aarch64") { "arm64" } else { "x64" };
 
     let lib_name = if platform == "macos" {
-        format!("{}-libtestoptimization-static.7z", platform)
+        format!("{}-libtestoptimization-static.zip", platform)
     } else {
-        format!("{}-{}-libtestoptimization-static.7z", platform, arch)
+        format!("{}-{}-libtestoptimization-static.zip", platform, arch)
     };
 
     // Check for custom native library search path
@@ -56,7 +56,7 @@ fn main() {
 fn download_library(out_dir: String, lib_name: String, lib_dir: &PathBuf) {
     // Get the folder
     let url = format!("{}{}", TEST_OPTIMIZATION_DOWNLOAD_URL_FORMAT, lib_name);
-    let lib_7z_path = PathBuf::from(out_dir.clone()).join("libtestoptimization.7z");
+    let lib_zip_path = PathBuf::from(out_dir.clone()).join("libtestoptimization.zip");
 
     // Download and extract library only if it doesn't exist
     println!("cargo:warning=Downloading native library from: {}", url);
@@ -71,13 +71,36 @@ fn download_library(out_dir: String, lib_name: String, lib_dir: &PathBuf) {
             process::exit(1);
         });
 
-    fs::write(&lib_7z_path, &response)
+    fs::write(&lib_zip_path, &response)
         .unwrap_or_else(|e| {
             eprintln!("Failed to write native library to disk: {}", e);
             process::exit(1);
         });
 
-    sevenz_rust::decompress_file(lib_7z_path, lib_dir.clone()).expect("Failed to decompress native library");
+    extract_zip(&lib_zip_path, lib_dir).expect("Failed to decompress native library");
+}
+
+fn extract_zip(zip_path: &PathBuf, target_dir: &PathBuf) -> std::io::Result<()> {
+    let file = std::fs::File::open(zip_path)?;
+    let mut archive = zip::ZipArchive::new(std::io::BufReader::new(file))?;
+    
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i)?;
+        let outpath = target_dir.join(file.name());
+        
+        if file.name().ends_with('/') {
+            fs::create_dir_all(&outpath)?;
+        } else {
+            if let Some(p) = outpath.parent() {
+                if !p.exists() {
+                    fs::create_dir_all(p)?;
+                }
+            }
+            let mut outfile = fs::File::create(&outpath)?;
+            std::io::copy(&mut file, &mut outfile)?;
+        }
+    }
+    Ok(())
 }
 
 fn link_from_search_path(platform: &str, lib_name: &String, search_path: String) {
@@ -98,10 +121,10 @@ fn link_from_search_path(platform: &str, lib_name: &String, search_path: String)
         return;
     }
 
-    let lib_7z_path = search_path.join(lib_name.clone());
-    if lib_7z_path.exists() {
-        println!("cargo:warning=Found .7z file in custom search path, extracting...[{}]", lib_7z_path.display());
-        sevenz_rust::decompress_file(lib_7z_path, search_path.clone())
+    let lib_zip_path = search_path.join(lib_name.clone());
+    if lib_zip_path.exists() {
+        println!("cargo:warning=Found .zip file in custom search path, extracting...[{}]", lib_zip_path.display());
+        extract_zip(&lib_zip_path, &search_path)
             .expect("Failed to decompress native library from custom search path");
         println!("cargo:warning=Using custom native library search path: {}", search_path.display());
         println!("cargo:rustc-link-search=native={}", search_path.display());
