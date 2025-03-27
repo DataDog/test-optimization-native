@@ -1,5 +1,5 @@
 # Use the official Rust image as the base
-FROM rust:1.85-slim-bullseye
+FROM rust:1.85-slim-bookworm
 
 RUN apt-get update && apt-get install -y pkg-config libssl-dev
 

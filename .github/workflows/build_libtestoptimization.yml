@@ -283,7 +283,6 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 10
 
-
   release:
     name: Create Release and Upload Artifacts
     needs: collect_artifacts
