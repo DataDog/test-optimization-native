@@ -3,8 +3,11 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2025 Datadog, Inc.
 
-use std::path::PathBuf;
-use std::{env, fs, process};
+use std::path::{Path};
+use std::{env, fs, io, process};
+use std::fs::File;
+use std::io::{BufWriter, Write};
+use ureq::AsSendBody;
 
 const TEST_OPTIMIZATION_SDK_SKIP_NATIVE_INSTALL: &str = "TEST_OPTIMIZATION_SDK_SKIP_NATIVE_INSTALL";
 const TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH: &str = "TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH";
@@ -24,9 +27,9 @@ fn main() {
 
     // Check for custom native library search path
     if let Ok(search_path) = env::var(TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH) {
-        link_from_search_path(platform, &lib_name, search_path);
+        link_from_search_path(platform, &lib_name, &search_path);
     } else {
-        let lib_dir = PathBuf::from(out_dir.clone());
+        let lib_dir = Path::new(&out_dir);
 
         // Check if library files already exist
         let has_library = match platform {
@@ -43,46 +46,45 @@ fn main() {
                 return;
             }
 
-            download_library(out_dir, lib_name, &lib_dir);
+            download_library(&out_dir, &lib_name, &lib_dir);
         }
 
         println!("cargo:rustc-link-search=native={}", lib_dir.display());
         println!("cargo:rustc-link-lib=static=testoptimization");
     }
 
-    other_links(target);
+    other_links(&target);
 }
 
-fn download_library(out_dir: String, lib_name: String, lib_dir: &PathBuf) {
+fn download_library(out_dir: &str, lib_name: &str, lib_dir: &Path) {
     // Get the folder
     let url = format!("{}{}", TEST_OPTIMIZATION_DOWNLOAD_URL_FORMAT, lib_name);
-    let lib_zip_path = PathBuf::from(out_dir.clone()).join("libtestoptimization.zip");
+    let lib_zip_path = Path::new(out_dir).join("libtestoptimization.zip");
 
     // Download and extract library only if it doesn't exist
     println!("cargo:warning=Downloading native library from: {}", url);
-    let response = reqwest::blocking::get(&url)
+
+    let mut response = ureq::get(&url)
+        .call()
         .unwrap_or_else(|e| {
             eprintln!("Failed to download native library: {}", e);
             process::exit(1);
-        })
-        .bytes()
-        .unwrap_or_else(|e| {
-            eprintln!("Failed to read response body: {}", e);
-            process::exit(1);
         });
 
-    fs::write(&lib_zip_path, &response)
-        .unwrap_or_else(|e| {
-            eprintln!("Failed to write native library to disk: {}", e);
-            process::exit(1);
-        });
+    let mut reader = response.body_mut().as_body().into_reader();
+    let mut file = BufWriter::new(File::create(&lib_zip_path).unwrap());
+    io::copy(&mut reader, &mut file).unwrap_or_else(|e| {
+        eprintln!("Failed to write native library to disk: {}", e);
+        process::exit(1);
+    });
+    file.flush().unwrap();
 
     extract_zip(&lib_zip_path, lib_dir).expect("Failed to decompress native library");
 }
 
-fn extract_zip(zip_path: &PathBuf, target_dir: &PathBuf) -> std::io::Result<()> {
-    let file = std::fs::File::open(zip_path)?;
-    let mut archive = zip::ZipArchive::new(std::io::BufReader::new(file))?;
+fn extract_zip(zip_path: &Path, target_dir: &Path) -> io::Result<()> {
+    let file = File::open(zip_path)?;
+    let mut archive = zip::ZipArchive::new(io::BufReader::new(file))?;
     
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
@@ -96,15 +98,15 @@ fn extract_zip(zip_path: &PathBuf, target_dir: &PathBuf) -> std::io::Result<()> 
                     fs::create_dir_all(p)?;
                 }
             }
-            let mut outfile = fs::File::create(&outpath)?;
+            let mut outfile = File::create(&outpath)?;
             std::io::copy(&mut file, &mut outfile)?;
         }
     }
     Ok(())
 }
 
-fn link_from_search_path(platform: &str, lib_name: &String, search_path: String) {
-    let search_path = PathBuf::from(search_path);
+fn link_from_search_path(platform: &str, lib_name: &str, search_path: &str) {
+    let search_path = Path::new(search_path);
 
     // First check for already extracted library files
     let has_library = match platform {
@@ -121,7 +123,7 @@ fn link_from_search_path(platform: &str, lib_name: &String, search_path: String)
         return;
     }
 
-    let lib_zip_path = search_path.join(lib_name.clone());
+    let lib_zip_path = search_path.join(&lib_name);
     if lib_zip_path.exists() {
         println!("cargo:warning=Found .zip file in custom search path, extracting...[{}]", lib_zip_path.display());
         extract_zip(&lib_zip_path, &search_path)
@@ -132,7 +134,7 @@ fn link_from_search_path(platform: &str, lib_name: &String, search_path: String)
     }
 }
 
-fn other_links(target: String) {
+fn other_links(target: &str) {
     if !target.contains("windows") {
         // Link to the dynamic dependency
         println!("cargo:rustc-link-lib=dylib=resolv");
