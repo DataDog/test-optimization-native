@@ -1,11 +1,24 @@
-# Stage 1: Build the static library
-FROM golang:1.24.1-bookworm AS builder
+# Use an Alpine-based Go image for the builder stage
+FROM debian:stretch AS builder
 
-# Install dependencies
-RUN apt-get update && apt-get install -y gcc binutils
+# Install necessary packages: wget for downloading Go, gcc for compiling,
+# libc6-dev for glibc headers, tar to extract the Go archive.
+RUN apt-get install -y \
+    wget \
+    gcc \
+    libc6-dev \
+    tar
 
 # Argument can be set during build time with --build-arg GOARCH=arm64
 ARG GOARCH=amd64
+
+# Download and extract Go
+ENV GOFILENAME=go1.24.1.linux-${GOARCH}.tar.gz \
+    GODOWNLOADURL=https://go.dev/dl/go1.24.1.linux-${GOARCH}.tar.gz
+RUN wget -O go.tar.gz ${GODOWNLOADURL} && \
+    tar -C /usr/local -xzf go.tar.gz && \
+    rm go.tar.gz
+ENV PATH="$PATH:/usr/local/go/bin"
 
 # Configure environment variables for CGO, operating system, architecture, and compiler
 ENV CGO_ENABLED=1 \
@@ -13,7 +26,7 @@ ENV CGO_ENABLED=1 \
     GOARCH=$GOARCH \
     CC=gcc \
     CGO_CFLAGS="-O2 -Os -s -DNDEBUG -fdata-sections -ffunction-sections" \
-    CGO_LDFLAGS="-s -Wl,--gc-sections"
+    CGO_LDFLAGS="-s -Wl,--gc-sections,-static"
 
 WORKDIR /app
 
@@ -23,9 +36,10 @@ COPY . .
 WORKDIR /app/internal/civisibility/native
 
 # Build the library
-RUN go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o ./output/static/libtestoptimization.a *.go
+RUN go build -tags civisibility_native -buildmode=c-archive -ldflags='-s -w -extldflags "-static"' -gcflags="all=-l" -o ./output/static/libtestoptimization.a *.go
 RUN strip --strip-unneeded ./output/static/libtestoptimization.a
-RUN go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -gcflags="all=-l" -o ./output/dynamic/libtestoptimization.so *.go
+
+RUN CGO_CFLAGS="-static -fPIC" CGO_LDFLAGS="" go build -tags civisibility_native -buildmode=c-shared -ldflags="-linkmode external -extldflags '-static'" -gcflags="all=-l" -o ./output/dynamic/libtestoptimization.so *.go
 RUN strip --strip-unneeded ./output/dynamic/libtestoptimization.so
 
 # Stage 2: Extract the library
