@@ -3,7 +3,7 @@ FROM debian:stretch AS builder
 
 # Install necessary packages: wget for downloading Go, gcc for compiling,
 # libc6-dev for glibc headers, tar to extract the Go archive.
-RUN apt-get update && apt-get install -y \
+RUN apt-get install -y \
     wget \
     gcc \
     libc6-dev \
