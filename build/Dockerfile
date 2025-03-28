@@ -13,7 +13,7 @@ ENV CGO_ENABLED=1 \
     GOARCH=$GOARCH \
     CC=musl-gcc \
     CGO_CFLAGS="-O2 -Os -s -DNDEBUG -fdata-sections -ffunction-sections" \
-    CGO_LDFLAGS="-static,-s -Wl,--gc-sections"
+    CGO_LDFLAGS="-s -Wl,--gc-sections,-static"
 
 WORKDIR /app
 
