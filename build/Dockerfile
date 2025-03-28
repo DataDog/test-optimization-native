@@ -1,8 +1,8 @@
-# Use an Alpine-based Go image for the builder stage
-FROM golang:1.24-alpine AS builder
+# Stage 1: Build the static library
+FROM golang:1.24.1-bookworm AS builder
 
-# Install dependencies for musl and binutils if needed
-RUN apk update && apk add --no-cache build-base
+# Install dependencies
+RUN apt-get update && apt-get install -y gcc binutils libc6-dev
 
 # Argument can be set during build time with --build-arg GOARCH=arm64
 ARG GOARCH=amd64
@@ -27,17 +27,7 @@ RUN go build -tags civisibility_native -buildmode=c-archive -ldflags='-s -w -ext
 RUN strip --strip-unneeded ./output/static/libtestoptimization.a
 
 # Build the dynamic library (c-shared)
-# We need to set the correct dynamic linker based on GOARCH.
-RUN \
-  if [ "$GOARCH" = "amd64" ]; then \
-    export DYNAMIC_LINKER="/lib/ld-musl-x86_64.so.1"; \
-  elif [ "$GOARCH" = "arm64" ]; then \
-    export DYNAMIC_LINKER="/lib/ld-musl-aarch64.so.1"; \
-  else \
-    echo "Unsupported architecture: $GOARCH" && exit 1; \
-  fi && \
-  echo "Using dynamic linker: $DYNAMIC_LINKER" && \
-  CGO_LDFLAGS="" go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w -extldflags \"-Wl,--dynamic-linker=${DYNAMIC_LINKER}\"" -gcflags="all=-l" -o ./output/dynamic/libtestoptimization.so *.go
+RUN CGO_LDFLAGS="" go build -tags civisibility_native -buildmode=c-shared -ldflags="-linkmode external -extldflags '-static'" -gcflags="all=-l" -o ./output/dynamic/libtestoptimization.so *.go
 RUN strip --strip-unneeded ./output/dynamic/libtestoptimization.so
 
 # Stage 2: Extract the library
