@@ -26,7 +26,7 @@ WORKDIR /app/internal/civisibility/native
 RUN go build -tags civisibility_native -buildmode=c-archive -ldflags='-s -w -extldflags "-static"' -gcflags="all=-l" -o ./output/static/libtestoptimization.a *.go
 RUN strip --strip-unneeded ./output/static/libtestoptimization.a
 
-RUN CGO_LDFLAGS="" go build -tags civisibility_native -buildmode=c-shared -ldflags="-linkmode external -extldflags '-static'" -gcflags="all=-l" -o ./output/dynamic/libtestoptimization.so *.go
+RUN CGO_CFLAGS="-static -fPIC" CGO_LDFLAGS="" go build -tags civisibility_native -buildmode=c-shared -ldflags="-linkmode external -extldflags '-static'" -gcflags="all=-l" -o ./output/dynamic/libtestoptimization.so *.go
 RUN strip --strip-unneeded ./output/dynamic/libtestoptimization.so
 
 # Stage 2: Extract the library
