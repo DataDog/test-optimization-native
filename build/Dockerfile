@@ -7,8 +7,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     gcc \
     libc6-dev \
-    tar \
-    && rm -rf /var/lib/apt/lists/*
+    tar
 
 # Argument can be set during build time with --build-arg GOARCH=arm64
 ARG GOARCH=amd64
