@@ -1,11 +1,25 @@
 # Use an Alpine-based Go image for the builder stage
-FROM golang:1.24-alpine AS builder
+FROM debian:stretch AS builder
 
-# Install dependencies for musl and binutils if needed
-RUN apk update && apk add --no-cache musl-dev build-base
+# Install necessary packages: wget for downloading Go, gcc for compiling,
+# libc6-dev for glibc headers, tar to extract the Go archive.
+RUN apt-get update && apt-get install -y \
+    wget \
+    gcc \
+    libc6-dev \
+    tar \
+    && rm -rf /var/lib/apt/lists/*
 
 # Argument can be set during build time with --build-arg GOARCH=arm64
 ARG GOARCH=amd64
+
+# Download and extract Go
+ENV GOFILENAME=go1.24.1.linux-${GOARCH}.tar.gz \
+    GODOWNLOADURL=https://go.dev/dl/go1.24.1.linux-${GOARCH}.tar.gz
+RUN wget -O go.tar.gz ${GODOWNLOADURL} && \
+    tar -C /usr/local -xzf go.tar.gz && \
+    rm go.tar.gz
+ENV PATH="$PATH:/usr/local/go/bin"
 
 # Configure environment variables for CGO, operating system, architecture, and compiler
 ENV CGO_ENABLED=1 \
