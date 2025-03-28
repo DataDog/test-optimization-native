@@ -2,7 +2,7 @@
 FROM golang:1.24-alpine AS builder
 
 # Install dependencies for musl and binutils if needed
-RUN apk add --no-cache musl-dev binutils
+RUN apk update && apk add --no-cache build-base
 
 # Argument can be set during build time with --build-arg GOARCH=arm64
 ARG GOARCH=amd64
@@ -11,7 +11,7 @@ ARG GOARCH=amd64
 ENV CGO_ENABLED=1 \
     GOOS=linux \
     GOARCH=$GOARCH \
-    CC=gcc \
+    CC=musl-gcc \
     CGO_CFLAGS="-O2 -Os -s -DNDEBUG -fdata-sections -ffunction-sections" \
     CGO_LDFLAGS="-s -Wl,--gc-sections,-static"
 
