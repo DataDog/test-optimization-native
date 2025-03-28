@@ -37,11 +37,7 @@ RUN \
     echo "Unsupported architecture: $GOARCH" && exit 1; \
   fi && \
   echo "Using dynamic linker: $DYNAMIC_LINKER" && \
-  CGO_LDFLAGS="" \
-  go build -tags civisibility_native -buildmode=c-shared \
-    -ldflags='-s -w -extldflags "-Wl,--dynamic-linker=${DYNAMIC_LINKER}"'' \
-    -gcflags="all=-l" \
-    -o ./output/dynamic/libtestoptimization.so *.go
+  CGO_LDFLAGS="" go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w -extldflags \"-Wl,--dynamic-linker=${DYNAMIC_LINKER}\"" -gcflags="all=-l" -o ./output/dynamic/libtestoptimization.so *.go
 
 RUN strip --strip-unneeded ./output/dynamic/libtestoptimization.so
 
