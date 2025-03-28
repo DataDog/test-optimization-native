@@ -25,7 +25,24 @@ WORKDIR /app/internal/civisibility/native
 # Build the library
 RUN go build -tags civisibility_native -buildmode=c-archive -ldflags='-s -w -extldflags "-static"' -gcflags="all=-l" -o ./output/static/libtestoptimization.a *.go
 RUN strip --strip-unneeded ./output/static/libtestoptimization.a
-RUN CGO_LDFLAGS="" go build -tags civisibility_native -buildmode=c-shared -ldflags='-s -w' -gcflags="all=-l" -o ./output/dynamic/libtestoptimization.so *.go
+
+# Build the dynamic library (c-shared)
+# We need to set the correct dynamic linker based on GOARCH.
+RUN \
+  if [ "$GOARCH" = "amd64" ]; then \
+    export DYNAMIC_LINKER="/lib/ld-musl-x86_64.so.1"; \
+  elif [ "$GOARCH" = "arm64" ]; then \
+    export DYNAMIC_LINKER="/lib/ld-musl-aarch64.so.1"; \
+  else \
+    echo "Unsupported architecture: $GOARCH" && exit 1; \
+  fi && \
+  echo "Using dynamic linker: $DYNAMIC_LINKER" && \
+  CGO_LDFLAGS="" \
+  go build -tags civisibility_native -buildmode=c-shared \
+    -ldflags='-s -w -extldflags "-Wl,--dynamic-linker=${DYNAMIC_LINKER}"'' \
+    -gcflags="all=-l" \
+    -o ./output/dynamic/libtestoptimization.so *.go
+
 RUN strip --strip-unneeded ./output/dynamic/libtestoptimization.so
 
 # Stage 2: Extract the library
