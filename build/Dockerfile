@@ -1,8 +1,8 @@
-# Stage 1: Build the static library
-FROM golang:1.24.1-bookworm AS builder
+# Use an Alpine-based Go image for the builder stage
+FROM golang:1.24-alpine AS builder
 
-# Install dependencies
-RUN apt-get update && apt-get install -y musl-tools binutils
+# Install dependencies for musl and binutils if needed
+RUN apk add --no-cache musl-dev binutils
 
 # Argument can be set during build time with --build-arg GOARCH=arm64
 ARG GOARCH=amd64
@@ -38,7 +38,6 @@ RUN \
   fi && \
   echo "Using dynamic linker: $DYNAMIC_LINKER" && \
   CGO_LDFLAGS="" go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w -extldflags \"-Wl,--dynamic-linker=${DYNAMIC_LINKER}\"" -gcflags="all=-l" -o ./output/dynamic/libtestoptimization.so *.go
-
 RUN strip --strip-unneeded ./output/dynamic/libtestoptimization.so
 
 # Stage 2: Extract the library
