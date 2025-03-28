@@ -11,7 +11,7 @@ ARG GOARCH=amd64
 ENV CGO_ENABLED=1 \
     GOOS=linux \
     GOARCH=$GOARCH \
-    CC=musl-gcc \
+    CC=gcc \
     CGO_CFLAGS="-O2 -Os -s -DNDEBUG -fdata-sections -ffunction-sections" \
     CGO_LDFLAGS="-s -Wl,--gc-sections,-static"
 
