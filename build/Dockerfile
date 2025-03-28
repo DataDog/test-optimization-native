@@ -1,8 +1,8 @@
-# Stage 1: Build the static library
-FROM golang:1.24.1-bookworm AS builder
+# Use an Alpine-based Go image for the builder stage
+FROM golang:1.24-alpine AS builder
 
-# Install dependencies
-RUN apt-get update && apt-get install -y gcc binutils libc6-dev
+# Install dependencies for musl and binutils if needed
+RUN apk update && apk add --no-cache musl-dev build-base
 
 # Argument can be set during build time with --build-arg GOARCH=arm64
 ARG GOARCH=amd64
@@ -26,7 +26,6 @@ WORKDIR /app/internal/civisibility/native
 RUN go build -tags civisibility_native -buildmode=c-archive -ldflags='-s -w -extldflags "-static"' -gcflags="all=-l" -o ./output/static/libtestoptimization.a *.go
 RUN strip --strip-unneeded ./output/static/libtestoptimization.a
 
-# Build the dynamic library (c-shared)
 RUN CGO_LDFLAGS="" go build -tags civisibility_native -buildmode=c-shared -ldflags="-linkmode external -extldflags '-static'" -gcflags="all=-l" -o ./output/dynamic/libtestoptimization.so *.go
 RUN strip --strip-unneeded ./output/dynamic/libtestoptimization.so
 
