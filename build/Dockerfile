@@ -1,5 +1,5 @@
 # Use an Alpine-based Go image for the builder stage
-FROM atadog/libddwaf:toolchain AS builder
+FROM datadog/libddwaf:toolchain AS builder
 
 ENV QUIC_LTTng=0
 
