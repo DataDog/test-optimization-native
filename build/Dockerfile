@@ -71,16 +71,23 @@ WORKDIR /app/internal/civisibility/native
 # Build the library
 # Ejecutamos el build en una capa aparte para soportar $MUSL_TARGET
 RUN export MUSL_TARGET=$(cat /musl_target) && \
-    export CGO_CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem /toolchain/include" && \
-    export CGO_LDFLAGS="--target=$MUSL_TARGET -L/toolchain/lib -lc++ -lc++abi -lunwind -lm" && \
+    export CGO_CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem /sysroot/$MUSL_TARGET/usr/include" && \
+    export CGO_LDFLAGS="--target=$MUSL_TARGET \
+        /sysroot/$MUSL_TARGET/usr/lib/libc++.a \
+        /sysroot/$MUSL_TARGET/usr/lib/libc++abi.a \
+        /sysroot/$MUSL_TARGET/usr/lib/libunwind.a -lm -lc -lpthread -ldl" && \
     go build -tags civisibility_native -buildmode=c-archive -o ./output/static/libtestoptimization.a *.go && \
     strip --strip-unneeded ./output/static/libtestoptimization.a
 
 RUN export MUSL_TARGET=$(cat /musl_target) && \
-    export CGO_CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem /toolchain/include" && \
-    export CGO_LDFLAGS="--target=$MUSL_TARGET -L/toolchain/lib -lc++ -lc++abi -lunwind -lm" && \
+    export CGO_CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem /sysroot/$MUSL_TARGET/usr/include" && \
+    export CGO_LDFLAGS="--target=$MUSL_TARGET \
+        /sysroot/$MUSL_TARGET/usr/lib/libc++.a \
+        /sysroot/$MUSL_TARGET/usr/lib/libc++abi.a \
+        /sysroot/$MUSL_TARGET/usr/lib/libunwind.a -lm -lc -lpthread -ldl" && \
     go build -tags civisibility_native -buildmode=c-shared -o ./output/dynamic/libtestoptimization.so *.go && \
     strip --strip-unneeded ./output/dynamic/libtestoptimization.so
+
 
 # Stage 2: Extract the library
 FROM alpine:latest
