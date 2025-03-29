@@ -1,13 +1,39 @@
 # Use an Alpine-based Go image for the builder stage
-FROM debian:stretch AS builder
+FROM atadog/libddwaf:toolchain AS builder
 
-# Install necessary packages: wget for downloading Go, gcc for compiling,
-# libc6-dev for glibc headers, tar to extract the Go archive.
-RUN apt-get install -y \
-    wget \
-    gcc \
-    libc6-dev \
-    tar
+ENV QUIC_LTTng=0
+
+RUN apt-get update \
+    && apt-get -y upgrade \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing \
+      cmake \
+      git \
+      wget \
+      curl \
+      cmake \
+      make \
+      gcc \
+      build-essential \
+      uuid-dev \
+      autoconf \
+      gdb \
+      tar \
+      \
+    && rm -rf /var/lib/apt/lists/*
+
+# We need to set this environment variable to make sure
+# that compiling/linking will act as if it was on Alpine
+ENV IsAlpine=true \
+## This dockerfile is meant to build universal binaries
+    AsUniversal=true
+
+
+RUN ln -s `which clang-16` /usr/bin/clang  && \
+    ln -s `which clang++-16` /usr/bin/clang++
+
+ENV \
+    CXX=clang++ \
+    CC=clang
 
 # Argument can be set during build time with --build-arg GOARCH=arm64
 ARG GOARCH=amd64
@@ -23,10 +49,18 @@ ENV PATH="$PATH:/usr/local/go/bin"
 # Configure environment variables for CGO, operating system, architecture, and compiler
 ENV CGO_ENABLED=1 \
     GOOS=linux \
-    GOARCH=$GOARCH \
-    CC=gcc \
-    CGO_CFLAGS="-O2 -Os -s -DNDEBUG -fdata-sections -ffunction-sections" \
-    CGO_LDFLAGS="-s -Wl,--gc-sections,-static"
+    GOARCH=$GOARCH
+
+# Target para musl según arquitectura
+RUN echo "GOARCH=$GOARCH" \
+ && if [ "$GOARCH" = "amd64" ]; then \
+        export MUSL_TARGET="x86_64-linux-musl"; \
+    elif [ "$GOARCH" = "arm64" ]; then \
+        export MUSL_TARGET="aarch64-linux-musl"; \
+    else \
+        echo "Unsupported architecture: $GOARCH" && exit 1; \
+    fi \
+ && echo "MUSL_TARGET=$MUSL_TARGET" > /musl_target_env.sh
 
 WORKDIR /app
 
@@ -36,10 +70,17 @@ COPY . .
 WORKDIR /app/internal/civisibility/native
 
 # Build the library
-RUN go build -tags civisibility_native -buildmode=c-archive -ldflags='-s -w -extldflags "-static"' -gcflags="all=-l" -o ./output/static/libtestoptimization.a *.go
+# Ejecutamos el build en una capa aparte para soportar $MUSL_TARGET
+RUN . /musl_target_env.sh \
+ && export CGO_CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem /toolchain/include" \
+ && export CGO_LDFLAGS="--target=$MUSL_TARGET -L/toolchain/lib -lc++ -lc++abi -lunwind -lm" \
+ && go build -tags civisibility_native -buildmode=c-archive -o ./output/static/libtestoptimization.a *.go
 RUN strip --strip-unneeded ./output/static/libtestoptimization.a
 
-RUN CGO_CFLAGS="-static -fPIC" CGO_LDFLAGS="" go build -tags civisibility_native -buildmode=c-shared -ldflags="-linkmode external -extldflags '-static'" -gcflags="all=-l" -o ./output/dynamic/libtestoptimization.so *.go
+RUN . /musl_target_env.sh \
+ && export CGO_CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem /toolchain/include" \
+ && export CGO_LDFLAGS="--target=$MUSL_TARGET -L/toolchain/lib -lc++ -lc++abi -lunwind -lm" \
+ && go build -tags civisibility_native -buildmode=c-shared -o ./output/dynamic/libtestoptimization.so *.go
 RUN strip --strip-unneeded ./output/dynamic/libtestoptimization.so
 
 # Stage 2: Extract the library
