@@ -43,8 +43,8 @@ ENV GOARCH=$GOARCH
 
 # Resolve MUSL target dynamically
 RUN case "$GOARCH" in \
-        amd64) echo "x86_64-linux-musl" > /musl_target ;; \
-        arm64) echo "aarch64-linux-musl" > /musl_target ;; \
+        amd64) echo "x86_64-none-linux-musl" > /musl_target ;; \
+        arm64) echo "aarch64-none-linux-musl" > /musl_target ;; \
         *) echo "Unsupported architecture: $GOARCH" && exit 1 ;; \
     esac
 
