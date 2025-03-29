@@ -37,6 +37,16 @@ ENV \
 
 # Argument can be set during build time with --build-arg GOARCH=arm64
 ARG GOARCH=amd64
+# Set MUSL_TARGET depending on GOARCH
+ARG MUSL_TARGET
+ENV GOARCH=$GOARCH
+
+# Resolve MUSL target dynamically
+RUN case "$GOARCH" in \
+        amd64) echo "x86_64-linux-musl" > /musl_target ;; \
+        arm64) echo "aarch64-linux-musl" > /musl_target ;; \
+        *) echo "Unsupported architecture: $GOARCH" && exit 1 ;; \
+    esac
 
 # Download and extract Go
 ENV GOFILENAME=go1.24.1.linux-${GOARCH}.tar.gz \
@@ -51,17 +61,6 @@ ENV CGO_ENABLED=1 \
     GOOS=linux \
     GOARCH=$GOARCH
 
-# Target para musl según arquitectura
-RUN echo "GOARCH=$GOARCH" \
- && if [ "$GOARCH" = "amd64" ]; then \
-        export MUSL_TARGET="x86_64-linux-musl"; \
-    elif [ "$GOARCH" = "arm64" ]; then \
-        export MUSL_TARGET="aarch64-linux-musl"; \
-    else \
-        echo "Unsupported architecture: $GOARCH" && exit 1; \
-    fi \
- && echo "MUSL_TARGET=$MUSL_TARGET" > /musl_target_env.sh
-
 WORKDIR /app
 
 # Copy everything from the current directory to the PWD (Present Working Directory) inside the container
@@ -71,17 +70,17 @@ WORKDIR /app/internal/civisibility/native
 
 # Build the library
 # Ejecutamos el build en una capa aparte para soportar $MUSL_TARGET
-RUN . /musl_target_env.sh \
- && export CGO_CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem /toolchain/include" \
- && export CGO_LDFLAGS="--target=$MUSL_TARGET -L/toolchain/lib -lc++ -lc++abi -lunwind -lm" \
- && go build -tags civisibility_native -buildmode=c-archive -o ./output/static/libtestoptimization.a *.go
-RUN strip --strip-unneeded ./output/static/libtestoptimization.a
+RUN export MUSL_TARGET=$(cat /musl_target) && \
+    export CGO_CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem /toolchain/include" && \
+    export CGO_LDFLAGS="--target=$MUSL_TARGET -L/toolchain/lib -lc++ -lc++abi -lunwind -lm" && \
+    go build -tags civisibility_native -buildmode=c-archive -o ./output/static/libtestoptimization.a *.go && \
+    strip --strip-unneeded ./output/static/libtestoptimization.a
 
-RUN . /musl_target_env.sh \
- && export CGO_CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem /toolchain/include" \
- && export CGO_LDFLAGS="--target=$MUSL_TARGET -L/toolchain/lib -lc++ -lc++abi -lunwind -lm" \
- && go build -tags civisibility_native -buildmode=c-shared -o ./output/dynamic/libtestoptimization.so *.go
-RUN strip --strip-unneeded ./output/dynamic/libtestoptimization.so
+RUN export MUSL_TARGET=$(cat /musl_target) && \
+    export CGO_CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem /toolchain/include" && \
+    export CGO_LDFLAGS="--target=$MUSL_TARGET -L/toolchain/lib -lc++ -lc++abi -lunwind -lm" && \
+    go build -tags civisibility_native -buildmode=c-shared -o ./output/dynamic/libtestoptimization.so *.go && \
+    strip --strip-unneeded ./output/dynamic/libtestoptimization.so
 
 # Stage 2: Extract the library
 FROM alpine:latest
