@@ -81,7 +81,7 @@ RUN export MUSL_TARGET=$(cat /musl_target) && \
     export CGO_CFLAGS="$CFLAGS" && \
     export CGO_LDFLAGS="$LDFLAGS" && \
     mkdir -p ./output/static && \
-    go build -tags civisibility_native -buildmode=c-archive -o ./output/static/libtestoptimization.a *.go && \
+    go build -tags civisibility_native -buildmode=c-archive -o ./output/static/libtestoptimization.a *.go
 
 # Build shared library (.so)
 RUN export MUSL_TARGET=$(cat /musl_target) && \
@@ -98,7 +98,7 @@ RUN export MUSL_TARGET=$(cat /musl_target) && \
     export CGO_CFLAGS="$CFLAGS" && \
     export CGO_LDFLAGS="$LDFLAGS" && \
     mkdir -p ./output/dynamic && \
-    go build -tags civisibility_native -buildmode=c-shared -o ./output/dynamic/libtestoptimization.so *.go && \
+    go build -tags civisibility_native -buildmode=c-shared -o ./output/dynamic/libtestoptimization.so *.go
 
 
 # Stage 2: Extract the library
