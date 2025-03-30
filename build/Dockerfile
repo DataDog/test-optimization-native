@@ -41,14 +41,16 @@ ARG GOARCH=amd64
 ARG MUSL_TARGET
 ENV GOARCH=$GOARCH
 
-# Resolve MUSL target dynamically
+# Set MUSL target triple and sysroot
 RUN case "$GOARCH" in \
-        amd64) echo "x86_64-none-linux-musl" > /musl_target ;; \
-        arm64) echo "aarch64-none-linux-musl" > /musl_target ;; \
+        amd64) echo "x86_64-none-linux-musl" > /musl_target && \
+               echo "ld-musl-x86_64.so.1" > /musl_interpreter ;; \
+        arm64) echo "aarch64-none-linux-musl" > /musl_target && \
+               echo "ld-musl-aarch64.so.1" > /musl_interpreter ;; \
         *) echo "Unsupported architecture: $GOARCH" && exit 1 ;; \
     esac
 
-# Download and extract Go
+# Install Go manually
 ENV GOFILENAME=go1.24.1.linux-${GOARCH}.tar.gz \
     GODOWNLOADURL=https://go.dev/dl/go1.24.1.linux-${GOARCH}.tar.gz
 RUN wget -O go.tar.gz ${GODOWNLOADURL} && \
@@ -56,35 +58,47 @@ RUN wget -O go.tar.gz ${GODOWNLOADURL} && \
     rm go.tar.gz
 ENV PATH="$PATH:/usr/local/go/bin"
 
-# Configure environment variables for CGO, operating system, architecture, and compiler
 ENV CGO_ENABLED=1 \
     GOOS=linux \
     GOARCH=$GOARCH
 
 WORKDIR /app
-
-# Copy everything from the current directory to the PWD (Present Working Directory) inside the container
 COPY . .
 
 WORKDIR /app/internal/civisibility/native
 
-# Build the library
-# Ejecutamos el build en una capa aparte para soportar $MUSL_TARGET
+# Build .a and .so using proper flags from CMake toolchain
 RUN export MUSL_TARGET=$(cat /musl_target) && \
-    export CGO_CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem /sysroot/$MUSL_TARGET/usr/include" && \
-    export CGO_LDFLAGS="--target=$MUSL_TARGET \
-        /sysroot/$MUSL_TARGET/usr/lib/libc++.a \
-        /sysroot/$MUSL_TARGET/usr/lib/libc++abi.a \
-        /sysroot/$MUSL_TARGET/usr/lib/libunwind.a -lm -lc -lpthread -ldl" && \
+    export MUSL_INTERPRETER=$(cat /musl_interpreter) && \
+    export SYSROOT=/sysroot/$MUSL_TARGET && \
+    export CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem $SYSROOT/usr/include \
+      -Qunused-arguments -fPIC -rtlib=compiler-rt -unwindlib=libunwind \
+      -static-libgcc -fno-omit-frame-pointer -ffunction-sections -fdata-sections" && \
+    export LDFLAGS="--target=$MUSL_TARGET -fPIC -fuse-ld=lld-16 -nodefaultlibs \
+      -Wl,-Bstatic -lc++ -lc++abi $SYSROOT/usr/lib/libclang_rt.builtins.a -lunwind \
+      -Wl,-Bdynamic -lc $SYSROOT/usr/lib/libclang_rt.builtins.a \
+      -Wl,--dynamic-linker,$SYSROOT/lib/$MUSL_INTERPRETER \
+      -Wl,-rpath=$SYSROOT -resource-dir $SYSROOT/usr/lib/resource_dir \
+      -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=safe" && \
+    export CGO_CFLAGS="$CFLAGS" && \
+    export CGO_LDFLAGS="$LDFLAGS" && \
     go build -tags civisibility_native -buildmode=c-archive -o ./output/static/libtestoptimization.a *.go && \
     strip --strip-unneeded ./output/static/libtestoptimization.a
 
 RUN export MUSL_TARGET=$(cat /musl_target) && \
-    export CGO_CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem /sysroot/$MUSL_TARGET/usr/include" && \
-    export CGO_LDFLAGS="--target=$MUSL_TARGET \
-        /sysroot/$MUSL_TARGET/usr/lib/libc++.a \
-        /sysroot/$MUSL_TARGET/usr/lib/libc++abi.a \
-        /sysroot/$MUSL_TARGET/usr/lib/libunwind.a -lm -lc -lpthread -ldl" && \
+    export MUSL_INTERPRETER=$(cat /musl_interpreter) && \
+    export SYSROOT=/sysroot/$MUSL_TARGET && \
+    export CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem $SYSROOT/usr/include \
+      -Qunused-arguments -fPIC -rtlib=compiler-rt -unwindlib=libunwind \
+      -static-libgcc -fno-omit-frame-pointer -ffunction-sections -fdata-sections" && \
+    export LDFLAGS="--target=$MUSL_TARGET -fPIC -fuse-ld=lld-16 -nodefaultlibs \
+      -Wl,-Bstatic -lc++ -lc++abi $SYSROOT/usr/lib/libclang_rt.builtins.a -lunwind \
+      -Wl,-Bdynamic -lc $SYSROOT/usr/lib/libclang_rt.builtins.a \
+      -Wl,--dynamic-linker,$SYSROOT/lib/$MUSL_INTERPRETER \
+      -Wl,-rpath=$SYSROOT -resource-dir $SYSROOT/usr/lib/resource_dir \
+      -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=safe" && \
+    export CGO_CFLAGS="$CFLAGS" && \
+    export CGO_LDFLAGS="$LDFLAGS" && \
     go build -tags civisibility_native -buildmode=c-shared -o ./output/dynamic/libtestoptimization.so *.go && \
     strip --strip-unneeded ./output/dynamic/libtestoptimization.so
 
