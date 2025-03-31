@@ -1,5 +1,5 @@
 # Stage 1: Build the static library
-FROM golang:1.24.1-bookworm AS builder
+FROM golang:1-bullseye AS builder
 
 # Install dependencies
 RUN apt-get update && apt-get install -y gcc binutils
@@ -23,8 +23,6 @@ COPY . .
 WORKDIR /app/internal/civisibility/native
 
 # Build the library
-RUN go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o ./output/static/libtestoptimization.a *.go
-RUN strip --strip-unneeded ./output/static/libtestoptimization.a
 RUN go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -gcflags="all=-l" -o ./output/dynamic/libtestoptimization.so *.go
 RUN strip --strip-unneeded ./output/dynamic/libtestoptimization.so
 
@@ -41,19 +39,15 @@ RUN apk add --no-cache zip
 RUN mkdir -p /output
 
 # Copy the static library and header from the builder stage
-COPY --from=builder /app/internal/civisibility/native/output/static/libtestoptimization.a /output/static/libtestoptimization.a
-COPY --from=builder /app/internal/civisibility/native/output/static/libtestoptimization.h /output/static/libtestoptimization.h
 COPY --from=builder /app/internal/civisibility/native/output/dynamic/libtestoptimization.so /output/dynamic/libtestoptimization.so
 COPY --from=builder /app/internal/civisibility/native/output/dynamic/libtestoptimization.h /output/dynamic/libtestoptimization.h
 
 # Compress both files into zip archives
-RUN cd /output/static && zip -j -9 ../${FILE_NAME}-static.zip *.*
 RUN cd /output/dynamic && zip -j -9 ../${FILE_NAME}-dynamic.zip *.*
 # Create a SHA256 checksum file for the archive
-RUN sha256sum /output/${FILE_NAME}-static.zip > /output/${FILE_NAME}-static.zip.sha256sum
 RUN sha256sum /output/${FILE_NAME}-dynamic.zip > /output/${FILE_NAME}-dynamic.zip.sha256sum
 
-RUN rm -r /output/static /output/dynamic
+RUN rm -r /output/dynamic
 
 # Command to run when the container starts
-ENTRYPOINT ["sh", "-c", "ls /output && cp /output/*.* /libtestoptimization && echo 'Static library copied.'"]
+ENTRYPOINT ["sh", "-c", "ls /output && cp /output/*.* /libtestoptimization && echo 'Dynamic library copied.'"]
