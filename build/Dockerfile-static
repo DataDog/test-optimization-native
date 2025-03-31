@@ -6,12 +6,14 @@ RUN apk add --no-cache gcc musl-dev build-base
 
 # Allow changing the architecture during the build if needed
 ARG GOARCH=amd64
+# Option to link libresolv explicitly for arm64, set to "true" or "false" at build time.
+ARG LINK_LIBRESOLV=false
 
 # Configure environment variables for compilation
 ENV CGO_ENABLED=1 \
     GOOS=linux \
     GOARCH=$GOARCH \
-    # Use gcc with the -static option to force static linking
+    # Default CC for amd64 (para arm64 se cambiará más abajo)
     CC="gcc -static" \
     CGO_CFLAGS="-O2 -s -DNDEBUG -fdata-sections -ffunction-sections" \
     CGO_LDFLAGS="-static -s -Wl,--gc-sections"
@@ -25,12 +27,18 @@ COPY . .
 # Change to the directory where the code to compile is located
 WORKDIR /app/internal/civisibility/native
 
-# Compile the static library using cgo in c-archive mode, forcing static linking,
-# removing the -gcflags flag, adding the "netgo" tag, y para arm64 agregar -lresolv.
+# Conditional compilation based on architecture and linking option
 RUN if [ "$GOARCH" = "arm64" ]; then \
-      echo "Compilando para arm64 con linkeo explícito de libresolv"; \
+      echo "Compilando para arm64 usando musl-gcc -static"; \
+      export CC="musl-gcc -static"; \
+      if [ "$LINK_LIBRESOLV" = "true" ]; then \
+          EXTRA="-lresolv"; \
+      else \
+          EXTRA=""; \
+      fi; \
+      echo "Flags extra del linker: $EXTRA"; \
       go build -tags "civisibility_native netgo" -buildmode=c-archive \
-      -ldflags="-extldflags '-static -lresolv' -s -w" \
+      -ldflags="-extldflags '-static $EXTRA' -s -w" \
       -o ./output/static/libtestoptimization.a *.go; \
     else \
       echo "Compilando para amd64"; \
@@ -39,7 +47,7 @@ RUN if [ "$GOARCH" = "arm64" ]; then \
       -o ./output/static/libtestoptimization.a *.go; \
     fi
 
-# Optimize the binary by removing unnecessary symbols
+# Optimizar la librería eliminando símbolos innecesarios
 RUN strip --strip-unneeded ./output/static/libtestoptimization.a
 
 # Stage 2: Package the library
@@ -61,11 +69,11 @@ COPY --from=builder /app/internal/civisibility/native/output/static/libtestoptim
 # Compress the library and header in a zip archive
 RUN cd /output/static && zip -j -9 ../${FILE_NAME}-static.zip *.*
 
-# Create a file with the SHA256 checksum of the zip to verify integrity
+# Create a SHA256 checksum file for the zip to verify integrity
 RUN sha256sum /output/${FILE_NAME}-static.zip > /output/${FILE_NAME}-static.zip.sha256sum
 
 # Clean up intermediate files
 RUN rm -r /output/static
 
-# When the container starts, list the contents and copy the files to a destination directory
+# When the container starts, list the content and copy the files to a destination directory
 ENTRYPOINT ["sh", "-c", "ls /output && cp /output/*.* /libtestoptimization && echo 'Static library copied.'"]
