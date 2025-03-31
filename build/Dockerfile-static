@@ -27,13 +27,9 @@ COPY . .
 WORKDIR /app/internal/civisibility/native
 
 # let's compile the static library using cgo in c-archive mode and forcing static linking
-RUN go build -tags civisibility_native -buildmode=c-archive \
+RUN go build -tags "civisibility_native netgo" -buildmode=c-archive \
     -ldflags="-extldflags '-static' -s -w" \
-    -gcflags="all=-l" \
     -o ./output/static/libtestoptimization.a *.go
-
-# let's optimize the binary by removing unnecessary symbols
-RUN strip --strip-unneeded ./output/static/libtestoptimization.a
 
 # Stage 2: let's package the library
 FROM alpine:latest
