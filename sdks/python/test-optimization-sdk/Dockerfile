@@ -1,5 +1,5 @@
 # Use the official Python image as the base
-FROM python:3.10-slim-bookworm
+FROM python:3.10-slim-bullseye
 
 # Set the working directory
 WORKDIR /usr/src/test-optimization-sdk
