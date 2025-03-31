@@ -99,8 +99,7 @@ RUN export MUSL_TARGET=$(cat /musl_target) && \
       -static-libgcc -fno-omit-frame-pointer -ffunction-sections -fdata-sections" && \
     export LDFLAGS="--target=$MUSL_TARGET -fPIC -fuse-ld=lld-16 -nodefaultlibs \
       -L$SYSROOT/usr/lib -Wl,-Bstatic -lc++ -lc++abi ${SYSROOT}/usr/lib/libclang_rt.builtins.a -lunwind \
-      -Wl,-Bdynamic -lc ${SYSROOT}/usr/lib/libclang_rt.builtins.a \
-      -Wl,--dynamic-linker,$SYSROOT/lib/${INTERPRETER} -Wl,-rpath,$SYSROOT \
+      -Wl,-Bstatic -lc -Wl,-Bdynamic \
       -resource-dir $SYSROOT/usr/lib/resource_dir -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=safe" && \
     export CGO_CFLAGS="$CFLAGS" && \
     export CGO_LDFLAGS="$LDFLAGS" && \
