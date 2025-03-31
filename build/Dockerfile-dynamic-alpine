@@ -1,0 +1,55 @@
+# Dockerfile-dynamic-alpine
+
+# Stage 1: Build the dynamic library using an Alpine-based Golang image
+FROM golang:1.24-alpine AS builder
+
+# Install dependencies (gcc and binutils)
+RUN apk update && apk add --no-cache gcc binutils
+
+# Argument that can be set during build (e.g., --build-arg GOARCH=arm64)
+ARG GOARCH=amd64
+
+# Set environment variables for CGO, OS, architecture, and compiler
+ENV CGO_ENABLED=1 \
+    GOOS=linux \
+    GOARCH=$GOARCH \
+    CC=gcc \
+    CGO_CFLAGS="-O2 -Os -s -DNDEBUG -fdata-sections -ffunction-sections" \
+    CGO_LDFLAGS="-s -Wl,--gc-sections"
+
+WORKDIR /app
+
+# Copy all files from the current directory into the container
+COPY . .
+
+WORKDIR /app/internal/civisibility/native
+
+# Build the shared library
+RUN go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -gcflags="all=-l" -o ./output/dynamic/libtestoptimization.so *.go
+RUN strip --strip-unneeded ./output/dynamic/libtestoptimization.so
+
+# Stage 2: Extract the dynamic library into a minimal Alpine image
+FROM alpine:latest
+
+ARG FILE_NAME=libtestoptimization
+
+# Install zip for compression
+RUN apk add --no-cache zip
+
+# Create the output directory
+RUN mkdir -p /output/dynamic
+
+# Copy the shared library and header from the builder stage
+COPY --from=builder /app/internal/civisibility/native/output/dynamic/libtestoptimization.so /output/dynamic/libtestoptimization.so
+COPY --from=builder /app/internal/civisibility/native/output/dynamic/libtestoptimization.h /output/dynamic/libtestoptimization.h
+
+# Compress the files into a zip archive
+RUN cd /output/dynamic && zip -j -9 ../${FILE_NAME}-dynamic-musl.zip *.*
+# Generate a SHA256 checksum file for the zip
+RUN sha256sum /output/${FILE_NAME}-dynamic-musl.zip > /output/${FILE_NAME}-dynamic-musl.zip.sha256sum
+
+# Remove the temporary output directory
+RUN rm -r /output/dynamic
+
+# Default command when the container starts
+ENTRYPOINT ["sh", "-c", "ls /output && cp /output/*.* /libtestoptimization && echo 'Dynamic library copied.'"]

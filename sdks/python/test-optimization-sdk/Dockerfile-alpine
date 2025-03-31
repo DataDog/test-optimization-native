@@ -1,0 +1,27 @@
+# Dockerfile-python-alpine
+
+# Use the official Python image based on Alpine
+FROM python:3.10-alpine
+
+# Set the working directory
+WORKDIR /usr/src/test-optimization-sdk
+
+# Install build dependencies:
+# - pkgconf: equivalent to pkg-config in Alpine
+# - openssl-dev: instead of libssl-dev
+RUN apk update && apk add --no-cache pkgconf openssl-dev
+
+# Copy configuration files first to take advantage of Docker cache
+COPY setup.py ./
+
+# Copy source code and tests
+COPY src ./src
+COPY tests ./tests
+
+# Install the package in development mode and also install pytest
+RUN pip install --upgrade pip && \
+    pip install -e . && \
+    pip install pytest
+
+# Default command to run the tests
+CMD ["pytest", "--capture=no"]

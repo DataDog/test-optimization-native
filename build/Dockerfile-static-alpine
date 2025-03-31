@@ -1,0 +1,55 @@
+# Dockerfile-static-alpine
+
+# Stage 1: Build the static library using an Alpine-based Golang image
+FROM golang:1.24-alpine AS builder
+
+# Install dependencies (gcc and binutils)
+RUN apk update && apk add --no-cache gcc binutils
+
+# Argument that can be set during build (e.g., --build-arg GOARCH=arm64)
+ARG GOARCH=amd64
+
+# Set environment variables for CGO, OS, architecture, and compiler
+ENV CGO_ENABLED=1 \
+    GOOS=linux \
+    GOARCH=$GOARCH \
+    CC=gcc \
+    CGO_CFLAGS="-O2 -Os -s -DNDEBUG -fdata-sections -ffunction-sections" \
+    CGO_LDFLAGS="-s -Wl,--gc-sections"
+
+WORKDIR /app
+
+# Copy all files from the current directory into the container
+COPY . .
+
+WORKDIR /app/internal/civisibility/native
+
+# Build the static library
+RUN go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o ./output/static/libtestoptimization.a *.go
+RUN strip --strip-unneeded ./output/static/libtestoptimization.a
+
+# Stage 2: Extract the static library into a minimal Alpine image
+FROM alpine:latest
+
+ARG FILE_NAME=libtestoptimization
+
+# Install zip for compression
+RUN apk add --no-cache zip
+
+# Create the output directory
+RUN mkdir -p /output/static
+
+# Copy the static library and header from the builder stage
+COPY --from=builder /app/internal/civisibility/native/output/static/libtestoptimization.a /output/static/libtestoptimization.a
+COPY --from=builder /app/internal/civisibility/native/output/static/libtestoptimization.h /output/static/libtestoptimization.h
+
+# Compress the files into a zip archive
+RUN cd /output/static && zip -j -9 ../${FILE_NAME}-static-musl.zip *.*
+# Generate a SHA256 checksum file for the zip
+RUN sha256sum /output/${FILE_NAME}-static-musl.zip > /output/${FILE_NAME}-static-musl.zip.sha256sum
+
+# Remove the temporary output directory
+RUN rm -r /output/static
+
+# Default command when the container starts
+ENTRYPOINT ["sh", "-c", "ls /output && cp /output/*.* /libtestoptimization && echo 'Static library copied.'"]
