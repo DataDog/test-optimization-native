@@ -1,7 +1,10 @@
 # Use an Alpine-based Go image for the builder stage
 FROM datadog/libddwaf:toolchain AS builder
 
-ENV QUIC_LTTng=0
+# Variables de entorno para el build universal
+ENV QUIC_LTTng=0 \
+    IsAlpine=true \
+    AsUniversal=true
 
 RUN apt-get update \
     && apt-get -y upgrade \
@@ -21,84 +24,87 @@ RUN apt-get update \
       \
     && rm -rf /var/lib/apt/lists/*
 
-# We need to set this environment variable to make sure
-# that compiling/linking will act as if it was on Alpine
-ENV IsAlpine=true \
-## This dockerfile is meant to build universal binaries
-    AsUniversal=true
+RUN ln -sf "$(which clang-16)" /usr/bin/clang && \
+    ln -sf "$(which clang++-16)" /usr/bin/clang++
 
-
-RUN ln -s `which clang-16` /usr/bin/clang  && \
-    ln -s `which clang++-16` /usr/bin/clang++
-
-ENV \
-    CXX=clang++ \
+ENV CXX=clang++ \
     CC=clang
 
 # Argument can be set during build time with --build-arg GOARCH=arm64
 ARG GOARCH=amd64
-# Set MUSL_TARGET depending on GOARCH
-ARG MUSL_TARGET
 ENV GOARCH=$GOARCH
 
-# Set MUSL target and interpreter (for legacy references, even if we don't use it anymore)
+# Definimos el MUSL target y comprobamos la arquitectura
+# Guardamos el target en un archivo para usarlo en los comandos posteriores
 RUN case "$GOARCH" in \
         amd64) echo "x86_64-none-linux-musl" > /musl_target ;; \
         arm64) echo "aarch64-none-linux-musl" > /musl_target ;; \
         *) echo "Unsupported architecture: $GOARCH" && exit 1 ;; \
     esac
 
+# Definimos el intérprete de carga dinámica según la arquitectura
+RUN case "$GOARCH" in \
+        amd64) echo "ld-musl-x86_64.so.1" > /interpreter ;; \
+        arm64) echo "ld-musl-aarch64.so.1" > /interpreter ;; \
+        *) echo "Unsupported architecture: $GOARCH" && exit 1 ;; \
+    esac
+
+
 # Install Go manually
 ENV GOFILENAME=go1.24.1.linux-${GOARCH}.tar.gz \
     GODOWNLOADURL=https://go.dev/dl/go1.24.1.linux-${GOARCH}.tar.gz
-
 RUN wget -O go.tar.gz ${GODOWNLOADURL} && \
     tar -C /usr/local -xzf go.tar.gz && \
     rm go.tar.gz
 
 ENV PATH="$PATH:/usr/local/go/bin" \
     CGO_ENABLED=1 \
-    GOOS=linux \
-    GOARCH=$GOARCH
+    GOOS=linux 
 
 WORKDIR /app
 COPY . .
 
 WORKDIR /app/internal/civisibility/native
 
-# Build static library (.a)
+# Comunes: Leemos el MUSL target y el intérprete definidos previamente
+# Se usarán en ambos builds (estático y compartido)
 RUN export MUSL_TARGET=$(cat /musl_target) && \
     export SYSROOT=/sysroot/$MUSL_TARGET && \
-    export CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem $SYSROOT/usr/include \
-      -Qunused-arguments -fPIC -rtlib=compiler-rt -unwindlib=libunwind \
-      -static-libgcc -fno-omit-frame-pointer -ffunction-sections -fdata-sections" && \
-    export LDFLAGS="--target=$MUSL_TARGET -fPIC -fuse-ld=lld-16 -nodefaultlibs \
-      -L$SYSROOT/usr/lib -Wl,-Bstatic -lc++ -lc++abi -lunwind \
-      -Wl,-Bdynamic -lc \
-      -Wl,-rpath=$SYSROOT \
-      -resource-dir $SYSROOT/usr/lib/resource_dir \
-      -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=safe" && \
-    export CGO_CFLAGS="$CFLAGS" && \
-    export CGO_LDFLAGS="$LDFLAGS" && \
-    mkdir -p ./output/static && \
-    go build -tags civisibility_native -buildmode=c-archive -o ./output/static/libtestoptimization.a *.go
+    export INTERPRETER=$(cat /interpreter) && \
+    echo "Using SYSROOT: $SYSROOT and INTERPRETER: $INTERPRETER" && \
+    mkdir -p ./output
 
-# Build shared library (.so)
+# Build de la librería estática (.a) con buildmode=c-archive
 RUN export MUSL_TARGET=$(cat /musl_target) && \
     export SYSROOT=/sysroot/$MUSL_TARGET && \
+    export INTERPRETER=$(cat /interpreter) && \
     export CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem $SYSROOT/usr/include \
       -Qunused-arguments -fPIC -rtlib=compiler-rt -unwindlib=libunwind \
       -static-libgcc -fno-omit-frame-pointer -ffunction-sections -fdata-sections" && \
     export LDFLAGS="--target=$MUSL_TARGET -fPIC -fuse-ld=lld-16 -nodefaultlibs \
-      -L$SYSROOT/usr/lib -Wl,-Bstatic -lc++ -lc++abi -lunwind \
-      -Wl,-Bdynamic -lc \
-      -Wl,-rpath=$SYSROOT \
-      -resource-dir $SYSROOT/usr/lib/resource_dir \
-      -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=safe" && \
+      -L$SYSROOT/usr/lib -Wl,-Bstatic -lc++ -lc++abi ${SYSROOT}/usr/lib/libclang_rt.builtins.a -lunwind \
+      -Wl,-Bdynamic -lc ${SYSROOT}/usr/lib/libclang_rt.builtins.a \
+      -Wl,--dynamic-linker,$SYSROOT/lib/${INTERPRETER} -Wl,-rpath,$SYSROOT \
+      -resource-dir $SYSROOT/usr/lib/resource_dir -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=safe" && \
     export CGO_CFLAGS="$CFLAGS" && \
     export CGO_LDFLAGS="$LDFLAGS" && \
-    mkdir -p ./output/dynamic && \
-    go build -tags civisibility_native -buildmode=c-shared -o ./output/dynamic/libtestoptimization.so *.go
+    go build -tags civisibility_native -buildmode=c-archive -o ./output/libtestoptimization.a *.go
+
+# Build de la librería compartida (.so) con buildmode=c-shared
+RUN export MUSL_TARGET=$(cat /musl_target) && \
+    export SYSROOT=/sysroot/$MUSL_TARGET && \
+    export INTERPRETER=$(cat /interpreter) && \
+    export CFLAGS="--target=$MUSL_TARGET -nostdinc++ -isystem $SYSROOT/usr/include \
+      -Qunused-arguments -fPIC -rtlib=compiler-rt -unwindlib=libunwind \
+      -static-libgcc -fno-omit-frame-pointer -ffunction-sections -fdata-sections" && \
+    export LDFLAGS="--target=$MUSL_TARGET -fPIC -fuse-ld=lld-16 -nodefaultlibs \
+      -L$SYSROOT/usr/lib -Wl,-Bstatic -lc++ -lc++abi ${SYSROOT}/usr/lib/libclang_rt.builtins.a -lunwind \
+      -Wl,-Bdynamic -lc ${SYSROOT}/usr/lib/libclang_rt.builtins.a \
+      -Wl,--dynamic-linker,$SYSROOT/lib/${INTERPRETER} -Wl,-rpath,$SYSROOT \
+      -resource-dir $SYSROOT/usr/lib/resource_dir -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=safe" && \
+    export CGO_CFLAGS="$CFLAGS" && \
+    export CGO_LDFLAGS="$LDFLAGS" && \
+    go build -tags civisibility_native -buildmode=c-shared -o ./output/libtestoptimization.so *.go
 
 
 # Stage 2: Extract the library
@@ -120,11 +126,12 @@ COPY --from=builder /app/internal/civisibility/native/output/dynamic/libtestopti
 COPY --from=builder /app/internal/civisibility/native/output/dynamic/libtestoptimization.h /output/dynamic/libtestoptimization.h
 
 # Compress both files into zip archives
-RUN cd /output/static && zip -j -9 ../${FILE_NAME}-static.zip *.*
-RUN cd /output/dynamic && zip -j -9 ../${FILE_NAME}-dynamic.zip *.*
+RUN cd /output/static && zip -j -9 ../${FILE_NAME}-static.zip *.* && \
+    cd /output/dynamic && zip -j -9 ../${FILE_NAME}-dynamic.zip *.*
+
 # Create a SHA256 checksum file for the archive
-RUN sha256sum /output/${FILE_NAME}-static.zip > /output/${FILE_NAME}-static.zip.sha256sum
-RUN sha256sum /output/${FILE_NAME}-dynamic.zip > /output/${FILE_NAME}-dynamic.zip.sha256sum
+RUN sha256sum /output/${FILE_NAME}-static.zip > /output/${FILE_NAME}-static.zip.sha256sum && \
+    sha256sum /output/${FILE_NAME}-dynamic.zip > /output/${FILE_NAME}-dynamic.zip.sha256sum
 
 RUN rm -r /output/static /output/dynamic
 
