@@ -1,5 +1,5 @@
 # Stage 1: Build the static library
-FROM golang:1.24.1-bookworm AS builder
+FROM golang:1-bullseye AS builder
 
 # Install dependencies
 RUN apt-get update && apt-get install -y gcc binutils
