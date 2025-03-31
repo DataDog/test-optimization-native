@@ -1,60 +1,71 @@
 # Stage 1: Build the static library using musl (Alpine)
 FROM golang:1-alpine AS builder
 
-# let's install the dependencies for the static build with musl and cgo
+# Install dependencies for the static build with musl and cgo
 RUN apk add --no-cache gcc musl-dev build-base
 
-# Allow to change the architecture during the build if needed
+# Allow changing the architecture during the build if needed
 ARG GOARCH=amd64
 
-# let's configure the environment variables for the compilation
+# Configure environment variables for compilation
 ENV CGO_ENABLED=1 \
     GOOS=linux \
     GOARCH=$GOARCH \
-    # use gcc with the -static option to force the static linking
+    # Use gcc with the -static option to force static linking
     CC="gcc -static" \
-    CGO_CFLAGS="-O2 -Os -s -DNDEBUG -fdata-sections -ffunction-sections" \
-    # indicate ld to use the static approach
+    CGO_CFLAGS="-O2 -s -DNDEBUG -fdata-sections -ffunction-sections" \
     CGO_LDFLAGS="-static -s -Wl,--gc-sections"
 
-# Working directory
+# Set working directory
 WORKDIR /app
 
 # Copy all code to the container
 COPY . .
 
-# let's move to the directory where the code to compile is located
+# Change to the directory where the code to compile is located
 WORKDIR /app/internal/civisibility/native
 
-# let's compile the static library using cgo in c-archive mode and forcing static linking
-RUN go build -tags "civisibility_native netgo" -buildmode=c-archive \
-    -ldflags="-extldflags '-static' -s -w" \
-    -o ./output/static/libtestoptimization.a *.go
+# Compile the static library using cgo in c-archive mode, forcing static linking,
+# removing the -gcflags flag, adding the "netgo" tag, y para arm64 agregar -lresolv.
+RUN if [ "$GOARCH" = "arm64" ]; then \
+      echo "Compilando para arm64 con linkeo explícito de libresolv"; \
+      go build -tags "civisibility_native netgo" -buildmode=c-archive \
+      -ldflags="-extldflags '-static -lresolv' -s -w" \
+      -o ./output/static/libtestoptimization.a *.go; \
+    else \
+      echo "Compilando para amd64"; \
+      go build -tags "civisibility_native netgo" -buildmode=c-archive \
+      -ldflags="-extldflags '-static' -s -w" \
+      -o ./output/static/libtestoptimization.a *.go; \
+    fi
 
-# Stage 2: let's package the library
+# Optimize the binary by removing unnecessary symbols
+RUN strip --strip-unneeded ./output/static/libtestoptimization.a
+
+# Stage 2: Package the library
 FROM alpine:latest
 
-# let's rename the final file using build args
+# Rename the final file using build args
 ARG FILE_NAME=libtestoptimization
 
-# let's install zip to compress the files
+# Install zip to compress the files
 RUN apk add --no-cache zip
 
-# let's create the output directory
+# Create the output directory
 RUN mkdir -p /output/static
 
-# let's copy the library and the header from the builder
+# Copy the library and header from the builder stage
 COPY --from=builder /app/internal/civisibility/native/output/static/libtestoptimization.a /output/static/libtestoptimization.a
 COPY --from=builder /app/internal/civisibility/native/output/static/libtestoptimization.h /output/static/libtestoptimization.h
 
-# let's compress the library and the header in a zip
+# Compress the library and header in a zip archive
 RUN cd /output/static && zip -j -9 ../${FILE_NAME}-static.zip *.*
 
-# let's create a file with the SHA256 checksum of the zip to verify the integrity
+# Create a file with the SHA256 checksum of the zip to verify integrity
 RUN sha256sum /output/${FILE_NAME}-static.zip > /output/${FILE_NAME}-static.zip.sha256sum
 
-# let's clean up the intermediate files
+# Clean up intermediate files
 RUN rm -r /output/static
 
-# when the container starts, list the content and copy the files to a destination directory
+# When the container starts, list the contents and copy the files to a destination directory
 ENTRYPOINT ["sh", "-c", "ls /output && cp /output/*.* /libtestoptimization && echo 'Static library copied.'"]
