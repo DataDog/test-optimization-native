@@ -47,7 +47,7 @@ RUN cd /output/dynamic && zip -j -9 ../${FILE_NAME}-dynamic.zip *.*
 # Create a SHA256 checksum file for the archive
 RUN sha256sum /output/${FILE_NAME}-dynamic.zip > /output/${FILE_NAME}-dynamic.zip.sha256sum
 
-RUN rm -r /output/static /output/dynamic
+RUN rm -r /output/dynamic
 
 # Command to run when the container starts
 ENTRYPOINT ["sh", "-c", "ls /output && cp /output/*.* /libtestoptimization && echo 'Dynamic library copied.'"]
