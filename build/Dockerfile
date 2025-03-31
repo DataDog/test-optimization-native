@@ -72,7 +72,7 @@ RUN export MUSL_TARGET=$(cat /musl_target) && \
     export SYSROOT=/sysroot/$MUSL_TARGET && \
     export INTERPRETER=$(cat /interpreter) && \
     echo "Using SYSROOT: $SYSROOT and INTERPRETER: $INTERPRETER" && \
-    mkdir -p ./output
+    mkdir -p ./output/static ./output/dynamic
 
 # Build de la librería estática (.a) con buildmode=c-archive
 RUN export MUSL_TARGET=$(cat /musl_target) && \
@@ -88,7 +88,7 @@ RUN export MUSL_TARGET=$(cat /musl_target) && \
       -resource-dir $SYSROOT/usr/lib/resource_dir -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=safe" && \
     export CGO_CFLAGS="$CFLAGS" && \
     export CGO_LDFLAGS="$LDFLAGS" && \
-    go build -tags civisibility_native -buildmode=c-archive -o ./output/libtestoptimization.a *.go
+    go build -tags civisibility_native -buildmode=c-archive -o ./output/static/libtestoptimization.a *.go
 
 # Build de la librería compartida (.so) con buildmode=c-shared
 RUN export MUSL_TARGET=$(cat /musl_target) && \
@@ -104,7 +104,7 @@ RUN export MUSL_TARGET=$(cat /musl_target) && \
       -resource-dir $SYSROOT/usr/lib/resource_dir -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=safe" && \
     export CGO_CFLAGS="$CFLAGS" && \
     export CGO_LDFLAGS="$LDFLAGS" && \
-    go build -tags civisibility_native -buildmode=c-shared -o ./output/libtestoptimization.so *.go
+    go build -tags civisibility_native -buildmode=c-shared -o ./output/dynamic/libtestoptimization.so *.go
 
 
 # Stage 2: Extract the library
