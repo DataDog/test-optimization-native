@@ -300,7 +300,7 @@ jobs:
 
   collect_artifacts:
     name: Collect all artifacts
-    needs: [mac_job, linux_arm64_job, linux_amd64_job, windows_job]
+    needs: [mac_job, linux_arm64_job, linux_amd64_job, windows_job, linux_arm64_musl_job, linux_amd64_musl_job]
     runs-on: ubuntu-latest
     permissions:
       contents: write
