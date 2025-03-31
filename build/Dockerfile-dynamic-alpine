@@ -4,7 +4,7 @@
 FROM golang:1.24-alpine AS builder
 
 # Install dependencies (gcc and binutils)
-RUN apk update && apk add --no-cache gcc binutils
+RUN apk update && apk add --no-cache gcc binutils build-base
 
 # Argument that can be set during build (e.g., --build-arg GOARCH=arm64)
 ARG GOARCH=amd64
