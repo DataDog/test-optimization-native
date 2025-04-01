@@ -25,7 +25,8 @@ COPY . .
 WORKDIR /app/internal/civisibility/native
 
 # Build the shared library
-RUN go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -gcflags="all=-l" -o ./output/dynamic/libtestoptimization.so *.go
+# -ldflags="-s -w" -gcflags="all=-l"
+RUN go build -tags civisibility_native -buildmode=c-shared -o ./output/dynamic/libtestoptimization.so *.go
 #RUN strip --strip-unneeded ./output/dynamic/libtestoptimization.so
 
 # Stage 2: Extract the dynamic library into a minimal Alpine image
