@@ -16,14 +16,33 @@ const TEST_OPTIMIZATION_DOWNLOAD_URL_FORMAT: &str = "https://github.com/DataDog/
 fn main() {
     let target = env::var("TARGET").expect("Cargo did not provide TARGET");
     let out_dir = env::var("OUT_DIR").expect("Cargo did not provide OUT_DIR");
-    let platform = if target.contains("apple-darwin") { "macos" } else if target.contains("windows") { "windows" } else if target.contains("linux") { "linux" } else { panic!("Unsupported platform: {}", target) };
-    let arch = if target.contains("aarch64") { "arm64" } else { "x64" };
 
-    let lib_name = if platform == "macos" {
-        format!("{}-libtestoptimization-static.zip", platform)
-    } else {
-        format!("{}-{}-libtestoptimization-static.zip", platform, arch)
+    let target_os = env::var("CARGO_CFG_TARGET_OS").expect("Cargo did not provide CARGO_CFG_TARGET_OS");
+    let target_env = env::var("CARGO_CFG_TARGET_ENV").expect("Cargo did not provide CARGO_CFG_TARGET_ENV");
+
+    let platform = match target_os.as_str() {
+        "macos" => "macos",
+        "windows" => "windows",
+        "linux" => "linux",
+        _ => panic!("Unsupported platform OS: {}", target_os),
     };
+
+    let arch = if target.contains("aarch64") { "arm64" } else if target.contains("x86_64") { "x64" } else { panic!("Unsupported architecture in TARGET: {}", target) };
+
+    let lib_name = match platform {
+        "macos" => format!("{}-libtestoptimization-static.zip", platform),
+        "linux" => {
+            if target_env == "musl" {
+                println!("cargo:warning=Detected Linux/musl target (Alpine). Using specific musl library.");
+                format!("{}-{}-libtestoptimization-static-musl.zip", platform, arch)
+            } else {
+                format!("{}-{}-libtestoptimization-static.zip", platform, arch)
+            }
+        }
+        "windows" | _ => format!("{}-{}-libtestoptimization-static.zip", platform, arch),
+    };
+
+    println!("cargo:warning=Target: {}, Platform: {}, Arch: {}, Env: {}, Lib Filename: {}", target, platform, arch, target_env, lib_name);
 
     // Check for custom native library search path
     if let Ok(search_path) = env::var(TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH) {
@@ -34,8 +53,7 @@ fn main() {
         // Check if library files already exist
         let has_library = match platform {
             "windows" => lib_dir.join("testoptimization.lib").exists(),
-            "linux" => lib_dir.join("libtestoptimization.a").exists(),
-            "macos" => lib_dir.join("libtestoptimization.a").exists(),
+            "linux" | "macos" => lib_dir.join("libtestoptimization.a").exists(),
             _ => false,
         };
 
@@ -53,7 +71,7 @@ fn main() {
         println!("cargo:rustc-link-lib=static=testoptimization");
     }
 
-    other_links(&target);
+    other_links(&target_os);
 }
 
 fn download_library(out_dir: &str, lib_name: &str, lib_dir: &Path) {
@@ -64,20 +82,30 @@ fn download_library(out_dir: &str, lib_name: &str, lib_dir: &Path) {
     // Download and extract library only if it doesn't exist
     println!("cargo:warning=Downloading native library from: {}", url);
 
-    let mut response = ureq::get(&url)
-        .call()
-        .unwrap_or_else(|e| {
-            eprintln!("Failed to download native library: {}", e);
+    {
+        let mut response = ureq::get(&url)
+            .call()
+            .unwrap_or_else(|e| {
+                eprintln!("Failed to download native library: {}", e);
+                process::exit(1);
+            });
+
+        if !response.status().is_success() {
+            eprintln!("Error: Failed to download native library from {}. Server responded with status: {}", url, response.status());
+            process::exit(1);
+        }
+
+        let mut reader = response.body_mut().as_body().into_reader();
+        let mut file = BufWriter::new(File::create(&lib_zip_path).unwrap());
+        io::copy(&mut reader, &mut file).unwrap_or_else(|e| {
+            eprintln!("Failed to write native library to disk: {}", e);
             process::exit(1);
         });
-
-    let mut reader = response.body_mut().as_body().into_reader();
-    let mut file = BufWriter::new(File::create(&lib_zip_path).unwrap());
-    io::copy(&mut reader, &mut file).unwrap_or_else(|e| {
-        eprintln!("Failed to write native library to disk: {}", e);
-        process::exit(1);
-    });
-    file.flush().unwrap();
+        file.flush().unwrap_or_else(|e| {
+            eprintln!("Error: Failed to flush file buffer for {:?}: {}", lib_zip_path, e);
+            process::exit(1);
+        });
+    }
 
     extract_zip(&lib_zip_path, lib_dir).expect("Failed to decompress native library");
 }
@@ -88,7 +116,12 @@ fn extract_zip(zip_path: &Path, target_dir: &Path) -> io::Result<()> {
     
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
-        let outpath = target_dir.join(file.name());
+        let outpath = target_dir.join(file.mangled_name());
+
+        if !outpath.starts_with(target_dir) {
+            eprintln!("Security error: Zip entry '{}' tried to write outside the target folder (calculated path: {}). Aborting...", file.name(), outpath.display());
+            return Err(io::Error::new(io::ErrorKind::PermissionDenied, "Zip Slip detected: Attempt to write outside target directory"));
+        }
         
         if file.name().ends_with('/') {
             fs::create_dir_all(&outpath)?;
@@ -111,8 +144,7 @@ fn link_from_search_path(platform: &str, lib_name: &str, search_path: &str) {
     // First check for already extracted library files
     let has_library = match platform {
         "windows" => search_path.join("testoptimization.lib").exists(),
-        "linux" => search_path.join("libtestoptimization.a").exists(),
-        "macos" => search_path.join("libtestoptimization.a").exists(),
+        "linux" | "macos" => search_path.join("libtestoptimization.a").exists(),
         _ => false,
     };
 
@@ -134,18 +166,19 @@ fn link_from_search_path(platform: &str, lib_name: &str, search_path: &str) {
     }
 }
 
-fn other_links(target: &str) {
-    if !target.contains("windows") {
-        // Link to the dynamic dependency
-        println!("cargo:rustc-link-lib=dylib=resolv");
-    } else {
-        // Windows version requires cc as a build-dependency
-        #[cfg(target_os = "windows")]
-        configure_windows();
+fn other_links(target_os: &str) {
+    match target_os {
+        "linux" | "macos" => println!("cargo:rustc-link-lib=dylib=resolv"),
+        "windows" => {
+            // Windows version requires cc as a build-dependency
+            #[cfg(target_os = "windows")]
+            configure_windows();
+        }
+        _ => {}
     }
 
     // If we are in osx, we need to add a couple of frameworks
-    if target.contains("apple-darwin") {
+    if target_os == "macos" {
         println!("cargo:rustc-link-lib=framework=CoreFoundation");
         println!("cargo:rustc-link-lib=framework=IOKit");
         println!("cargo:rustc-link-lib=framework=Security");

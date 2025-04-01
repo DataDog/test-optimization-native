@@ -1,0 +1,55 @@
+# Dockerfile-dynamic
+
+# Stage 1: Build the dynamic library
+FROM golang:1.24-bullseye AS builder
+
+# Install dependencies
+RUN apt-get update && apt-get install -y gcc binutils
+
+# Argument can be set during build time with --build-arg GOARCH=arm64
+ARG GOARCH=amd64
+
+# Configure environment variables for CGO, operating system, architecture, and compiler
+ENV CGO_ENABLED=1 \
+    GOOS=linux \
+    GOARCH=$GOARCH \
+    CC=gcc \
+    CGO_CFLAGS="-O2 -Os -s -DNDEBUG -fdata-sections -ffunction-sections" \
+    CGO_LDFLAGS="-s -Wl,--gc-sections"
+
+WORKDIR /app
+
+# Copy all files from current directory to the container
+COPY . .
+
+WORKDIR /app/internal/civisibility/native
+
+# Build the dynamic library
+RUN go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -gcflags="all=-l" -o ./output/dynamic/libtestoptimization.so *.go
+RUN strip --strip-unneeded ./output/dynamic/libtestoptimization.so
+
+# Stage 2: Extract the dynamic library
+FROM alpine:latest
+
+ARG FILE_NAME=libtestoptimization
+
+# Install zip for compression
+RUN apk add --no-cache zip
+
+# Create the output folder
+RUN mkdir -p /output/dynamic
+
+# Copy the dynamic library and header from the builder stage
+COPY --from=builder /app/internal/civisibility/native/output/dynamic/libtestoptimization.so /output/dynamic/libtestoptimization.so
+COPY --from=builder /app/internal/civisibility/native/output/dynamic/libtestoptimization.h /output/dynamic/libtestoptimization.h
+
+# Compress the files into a zip archive
+RUN cd /output/dynamic && zip -j -9 ../${FILE_NAME}-dynamic.zip *.*
+# Create a SHA256 checksum file for the archive
+RUN sha256sum /output/${FILE_NAME}-dynamic.zip > /output/${FILE_NAME}-dynamic.zip.sha256sum
+
+# Remove temporary folder
+RUN rm -r /output/dynamic
+
+# Command to run when the container starts
+ENTRYPOINT ["sh", "-c", "ls /output && cp /output/*.* /libtestoptimization && echo 'Dynamic library copied.'"]

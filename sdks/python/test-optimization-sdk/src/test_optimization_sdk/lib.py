@@ -309,7 +309,7 @@ def _get_library_path() -> str:
 # Load the library
 try:
     lib_path = _get_library_path()
-    print(f"Loading test optimization library from {lib_path}")
+    print(f"Loading test optimization library from {lib_path}", flush=True)
     lib = ffi.dlopen(lib_path)
 except OSError as e:
     raise RuntimeError(f"Failed to load test optimization library from {lib_path}: {e}")

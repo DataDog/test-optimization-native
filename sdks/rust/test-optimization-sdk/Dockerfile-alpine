@@ -1,0 +1,22 @@
+# Dockerfile-rust-alpine
+
+# Use the official Rust image based on Alpine
+FROM rust:1.85-alpine
+
+# Update repositories and install necessary dependencies:
+# - pkgconf: equivalent to pkg-config on Alpine
+# - openssl-dev: equivalent to libssl-dev on Debian
+RUN apk update && apk add --no-cache pkgconf openssl-dev
+
+# Set the working directory
+WORKDIR /usr/src/test-optimization-sdk
+
+# Copy manifest files first to leverage Docker cache
+COPY Cargo.toml Cargo.lock ./
+
+# Copy source code and build script
+COPY src ./src
+COPY build.rs ./
+
+# Run tests
+CMD ["cargo", "test", "--", "--nocapture"]
