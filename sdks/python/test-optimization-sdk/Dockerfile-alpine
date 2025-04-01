@@ -24,5 +24,5 @@ RUN pip install --upgrade pip && \
     pip install pytest
 
 # Default command to run the tests
-#CMD ["pytest", "--capture=no"]
-CMD ["sh", "-c", "ls -l /build_artifacts && echo '--- LDD Output ---' && ldd /build_artifacts/libtestoptimization.so && echo '--- Running Pytest ---' && pytest --capture=no"]
+CMD ["pytest", "--capture=no"]
+#CMD ["sh", "-c", "ls -l /build_artifacts && echo '--- LDD Output ---' && ldd /build_artifacts/libtestoptimization.so && echo '--- Running Pytest ---' && pytest --capture=no"]
