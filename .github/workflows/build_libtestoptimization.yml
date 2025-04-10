@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: "DataDog/dd-trace-go"
-          ref: "main"
+          ref: "v1.72.2" #latest stable release
           token: ${{ secrets.GITHUB_TOKEN }}
           path: external  
       - name: Copy build files
@@ -117,7 +117,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: "DataDog/dd-trace-go"
-          ref: "main"
+          ref: "v1.72.2" #latest stable release
           token: ${{ secrets.GITHUB_TOKEN }}
           path: external
       - name: Copy build files
@@ -153,7 +153,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: "DataDog/dd-trace-go"
-          ref: "main"
+          ref: "v1.72.2" #latest stable release
           token: ${{ secrets.GITHUB_TOKEN }}
           path: external
       - name: Copy build files
