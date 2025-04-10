@@ -9,7 +9,7 @@ on:
       branches: [ main ]
 
 env:
-  dd_trace_go_ref: "v1.73.0-rc.3"
+  dd_trace_go_ref: "v2.0.0-rc.11"
 
 jobs:
   mac_job:
