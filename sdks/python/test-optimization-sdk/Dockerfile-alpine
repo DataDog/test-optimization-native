@@ -1,0 +1,23 @@
+# Use the official Python image based on Alpine Linux
+FROM python:3.10-alpine
+
+# Set the working directory
+WORKDIR /usr/src/test-optimization-sdk
+
+# Install required packages including gcompat for glibc compatibility
+RUN apk add --no-cache pkgconf openssl-dev gcompat
+
+# Copy the setup files first to leverage Docker cache
+COPY setup.py ./
+
+# Copy the source code
+COPY src ./src
+COPY tests ./tests
+
+# Upgrade pip, install the package in development mode and install pytest
+RUN pip install --upgrade pip && \
+    pip install -e . && \
+    pip install pytest
+
+# Run the tests
+CMD ["pytest", "--capture=no"]
