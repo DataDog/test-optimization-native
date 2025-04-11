@@ -419,13 +419,13 @@ import (
 	"time"
 	"unsafe"
 
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/mocktracer"
-	ddtracer "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
-	"gopkg.in/DataDog/dd-trace-go.v1/internal/civisibility/constants"
-	civisibility "gopkg.in/DataDog/dd-trace-go.v1/internal/civisibility/integrations"
-	"gopkg.in/DataDog/dd-trace-go.v1/internal/civisibility/utils"
-	"gopkg.in/DataDog/dd-trace-go.v1/internal/civisibility/utils/net"
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/ext"
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
+	ddtracer "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
+	"github.com/DataDog/dd-trace-go/v2/internal/civisibility/constants"
+	civisibility "github.com/DataDog/dd-trace-go/v2/internal/civisibility/integrations"
+	"github.com/DataDog/dd-trace-go/v2/internal/civisibility/utils"
+	"github.com/DataDog/dd-trace-go/v2/internal/civisibility/utils/net"
 )
 
 // *******************************************************************************************************************
@@ -446,7 +446,7 @@ const (
 type (
 	// spanContainer represents a span and its context.
 	spanContainer struct {
-		span ddtracer.Span
+		span *ddtracer.Span
 		ctx  context.Context
 	}
 
@@ -1894,7 +1894,7 @@ func topt_debug_mock_tracer_reset() C.Bool {
 	return toBool(false)
 }
 
-func getMockSpanArrayFromSpanSlice(spans []mocktracer.Span) C.topt_MockSpanArray {
+func getMockSpanArrayFromSpanSlice(spans []*mocktracer.Span) C.topt_MockSpanArray {
 	spansCount := len(spans)
 	if spansCount == 0 {
 		return C.topt_MockSpanArray{len: C.size_t(0)}

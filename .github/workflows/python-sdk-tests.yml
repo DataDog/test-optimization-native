@@ -236,7 +236,7 @@ jobs:
           pip install pytest
 
       - name: Run tests
-        run: pytest --capture=no || true
+        run: pytest --capture=no
 
       - name: Update Check
         if: always()
