@@ -3,6 +3,7 @@ import platform
 import sys
 import urllib.request
 import zipfile
+import re
 from pathlib import Path
 from .constants import TEST_OPTIMIZATION_SDK_SKIP_NATIVE_INSTALL, TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH, TEST_OPTIMIZATION_DOWNLOAD_URL_FORMAT
 
@@ -27,6 +28,8 @@ def get_library_filename():
     
     if system == "macos":
         return f"{system}-libtestoptimization-dynamic.zip"
+    elif system == "linux" and is_alpine_linux():
+        return f"{system}-{arch}-libtestoptimization-dynamic-musl.zip"
     else:
         return f"{system}-{arch}-libtestoptimization-dynamic.zip"
 
@@ -58,6 +61,29 @@ def download_native_library():
     except Exception as e:
         print(f"Failed to extract native library: {e}", file=sys.stderr)
         sys.exit(1)
+
+def is_alpine_linux():
+    """
+    Checks if the operating system is Alpine Linux
+    by reading /etc/os-release.
+    """
+    if platform.system() != 'Linux':
+        return False # Not Linux, therefore not Alpine
+
+    os_release_path = '/etc/os-release'
+    if os.path.exists(os_release_path):
+        try:
+            with open(os_release_path, 'r') as f:
+                for line in f:
+                    # Use a regular expression to search for ID=alpine
+                    # ignoring potential quotes and spaces
+                    if re.match(r'^ID\s*=\s*"?alpine"?$', line, re.IGNORECASE):
+                        return True
+        except Exception as e:
+            # Handle potential read errors if necessary
+            print(f"Error reading {os_release_path}: {e}")
+            pass # Print the error and allow the function to return False
+    return False
 
 def setup_native_library():
     """Setup the native library during package installation."""
