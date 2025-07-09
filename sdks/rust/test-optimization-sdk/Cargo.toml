@@ -14,3 +14,6 @@ zip = { version = "2.5.0", default-features = false, features = ["deflate"] }
 
 [target.'cfg(windows)'.build-dependencies]
 cc = "1.2.3"
+
+[target.'cfg(windows)']
+crt-static = true

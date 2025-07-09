@@ -5,10 +5,13 @@ set GOARCH=amd64
 set CC=x:\mingw64\bin\x86_64-w64-mingw32-gcc.exe
 set CGO_ENABLED=1
 set CGO_CPPFLAGS=
-set CGO_CXXFLAGS=-O2 -g
-set CGO_FFLAGS=-O2 -g
-set CGO_CFLAGS=-O2 -Os -DNDEBUG
-set CGO_LDFLAGS=-Wl,--gc-sections
+#set CGO_CXXFLAGS=-O2 -g
+set CGO_CXXFLAGS=-O2
+#set CGO_FFLAGS=-O2 -g
+set CGO_FFLAGS=-O2
+#set CGO_CFLAGS=-O2 -Os -DNDEBUG
+set CGO_CFLAGS=-O2 -DNDEBUG
+#set CGO_LDFLAGS=-Wl,--gc-sections
 
 echo Building windows static library
 go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -o ./output/windows-x64-libtestoptimization-static/testoptimization.lib exports.go main.go
