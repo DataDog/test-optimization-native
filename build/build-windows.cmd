@@ -18,7 +18,8 @@ echo Building windows static library
 rem go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -o ./output/windows-x64-libtestoptimization-static/testoptimization.lib exports.go main.go
 go build -tags civisibility_native -buildmode=c-archive -ldflags "-linkmode=external -extldflags=-Wl,--no-seh" -o ./output/windows-x64-libtestoptimization-static/testoptimization.lib exports.go main.go
 
-pushd build_artifacts
+echo Stripping .pdata and .xdata sections from the static library
+pushd ./output/windows-x64-libtestoptimization-static
 set "AR=x:\mingw64\bin\llvm-ar.exe"
 set "OBJCOPY=x:\mingw64\bin\llvm-objcopy.exe"
 
@@ -29,7 +30,7 @@ for %%f in (*.o) do (
 )
 del testoptimization.lib
 %AR% rc testoptimization.lib *.o
-%AR% s  testoptimization.lib   :: (ordena el índice)
+%AR% s  testoptimization.lib
 popd
 
 echo Building windows shared library
