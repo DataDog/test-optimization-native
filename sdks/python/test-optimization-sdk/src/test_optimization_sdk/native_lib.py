@@ -96,7 +96,7 @@ def setup_dev_mode_library():
     # native_lib.py is in sdks/python/test-optimization-sdk/src/test_optimization_sdk/
     # so we go up 5 levels to reach repo root
     current_file = Path(__file__).resolve()
-    repo_root = current_file.parents[4]  # Go up 5 levels
+    repo_root = current_file.parents[5]  # Go up 5 levels: test_optimization_sdk -> src -> test-optimization-sdk -> python -> sdks -> repo_root
     dev_output_path = repo_root / "dev-output" / folder_name
     
     # Check if the library file exists
