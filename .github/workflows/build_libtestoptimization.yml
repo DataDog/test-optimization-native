@@ -194,14 +194,55 @@ jobs:
       - name: Build Windows libraries
         shell: pwsh
         run: |
-          $env:CC = "$env:MINGW_PATH\mingw64\bin\gcc.exe"
+          # ---------------------------------------------------------------------------
+          # Environment variables and compile flags
+          # ---------------------------------------------------------------------------
+          $env:CC          = "$env:MINGW_PATH\mingw64\bin\gcc.exe"
           $env:CGO_ENABLED = "1"
-          $env:CGO_CFLAGS = "-O2 -Os -DNDEBUG"
-          $env:CGO_LDFLAGS = "-Wl,--gc-sections"
-          Write-Host "Building windows static library"
-          go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -o ./output/windows-x64-libtestoptimization-static/testoptimization.lib exports.go main.go
+          $env:CGO_CFLAGS  = "-O2 -fno-unwind-tables -fno-asynchronous-unwind-tables"  # prevent new unwind tables
+          $env:CGO_LDFLAGS = "-Wl,--no-seh"
+          # ---------------------------------------------------------------------------
+          # 1. Build the static library (.lib)
+          # ---------------------------------------------------------------------------
+          Write-Host "Building Windows static library"
+          go build `
+            -tags civisibility_native `
+            -buildmode=c-archive `
+            -ldflags "-linkmode=external -extldflags=-Wl,--no-seh" `
+            -o ./output/windows-x64-libtestoptimization-static/testoptimization.lib `
+            exports.go main.go
+          # ---------------------------------------------------------------------------
+          # 2. Strip .pdata/.xdata and re-pack the .lib (fixes MSVC 14.44 linker)
+          # ---------------------------------------------------------------------------
+          $libDir  = Resolve-Path "./output/windows-x64-libtestoptimization-static"
+          $libFile = Join-Path $libDir "testoptimization.lib"
+          $llvmBin = "$env:MINGW_PATH\mingw64\bin"         # WinLibs ships llvm-ar / llvm-objcopy
+          $AR      = Join-Path $llvmBin "llvm-ar.exe"
+          $OBJCOPY = Join-Path $llvmBin "llvm-objcopy.exe"
+          Write-Host "Removing .pdata/.xdata from $libFile"
+          Push-Location $libDir
+          # 2-a) extract all object files
+          & $AR x testoptimization.lib | Out-Null
+          # 2-b) strip the problematic sections from each object
+          Get-ChildItem -Filter *.o | ForEach-Object {
+              Write-Host "  • cleaning $($_.Name)"
+              & $OBJCOPY --remove-section=.pdata --remove-section=.xdata $_.FullName
+          }
+          # 2-c) rebuild the static library
+          Remove-Item testoptimization.lib
+          & $AR rc testoptimization.lib *.o | Out-Null
+          & $AR s  testoptimization.lib      | Out-Null   # rebuild symbol index
+          # 2-d) delete temporary .o files
+          Remove-Item *.o
+          Pop-Location
+          # ---------------------------------------------------------------------------
+          # 3. Build the shared library (DLL) – no special handling needed
+          # ---------------------------------------------------------------------------
           Write-Host "Building windows shared library"
           go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -o ./output/windows-x64-libtestoptimization-dynamic/testoptimization.dll exports.go main.go
+          # ---------------------------------------------------------------------------
+          # 4. Compress the DLL with UPX
+          # ---------------------------------------------------------------------------
           Write-Host "Compressing DLL with UPX"
           & "$env:UPX_PATH" --best --lzma ./output/windows-x64-libtestoptimization-dynamic/testoptimization.dll
         working-directory: external/internal/civisibility/native
