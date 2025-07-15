@@ -2,6 +2,54 @@
 
 set -e  # Exit on any error
 
+# Function to display help
+show_help() {
+    cat << EOF
+Test Optimization Native Library - Local Development Build Script
+
+This script builds the native library for local development by:
+1. Setting up the dd-trace-go repository
+2. Copying build and native files
+3. Building platform-specific libraries
+4. Applying platform-specific optimizations
+
+Usage:
+    ./localdev.sh [OPTIONS]
+
+Options:
+    -h, --help      Show this help message and exit
+
+Requirements:
+    - Go 1.24 or later
+    - Git
+    - Platform-specific build tools (MinGW for Windows, etc.)
+
+Output:
+    All build artifacts will be placed in ../dev-output/
+
+Examples:
+    ./localdev.sh           # Build for current platform
+    ./localdev.sh --help    # Show this help
+
+EOF
+}
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help|-\?)
+            show_help
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information."
+            exit 1
+            ;;
+    esac
+    shift
+done
+
 # Configuration
 DEV_DIR="../dev"
 OUTPUT_DIR="../dev-output"
