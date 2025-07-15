@@ -16,7 +16,7 @@ set CGO_LDFLAGS=-Wl,--no-seh
 
 echo Building windows static library
 rem go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -o ./output/windows-x64-libtestoptimization-static/testoptimization.lib exports.go main.go
-go build -tags civisibility_native -buildmode=c-archive -o ./output/windows-x64-libtestoptimization-static/testoptimization.lib exports.go main.go
+go build -tags civisibility_native -buildmode=c-archive -ldflags "-linkmode=external -extldflags=-Wl,--no-seh" -o ./output/windows-x64-libtestoptimization-static/testoptimization.lib exports.go main.go
 
 echo Building windows shared library
 go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -o ./output/windows-x64-libtestoptimization-dynamic/testoptimization.dll exports.go main.go
