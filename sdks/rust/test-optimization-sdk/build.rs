@@ -11,7 +11,7 @@ use ureq::AsSendBody;
 
 const TEST_OPTIMIZATION_SDK_SKIP_NATIVE_INSTALL: &str = "TEST_OPTIMIZATION_SDK_SKIP_NATIVE_INSTALL";
 const TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH: &str = "TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH";
-const TEST_OPTIMIZATION_DOWNLOAD_URL_FORMAT: &str = "https://github.com/DataDog/test-optimization-native/releases/download/v0.0.2-preview/";
+const TEST_OPTIMIZATION_DOWNLOAD_URL_FORMAT: &str = "https://github.com/DataDog/test-optimization-native/releases/download/v0.0.3-preview/";
 
 fn main() {
     let target = env::var("TARGET").expect("Cargo did not provide TARGET");

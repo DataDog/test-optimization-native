@@ -5,7 +5,7 @@ from pathlib import Path
 
 setup(
     name="test-optimization-sdk",
-    version="0.0.1",
+    version="0.0.2",
     description="Datadog's test optimization SDK for Python",
     author="Datadog",
     author_email="info@datadoghq.com",
