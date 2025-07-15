@@ -196,10 +196,10 @@ jobs:
         run: |
           $env:CC = "$env:MINGW_PATH\mingw64\bin\gcc.exe"
           $env:CGO_ENABLED = "1"
-          $env:CGO_CFLAGS = "-O2 -Os -DNDEBUG"
-          $env:CGO_LDFLAGS = "-Wl,--gc-sections"
+          $env:CGO_CFLAGS = "-O2 -Os -DNDEBUG -fno-unwind-tables -fno-asynchronous-unwind-tables"
+          $env:CGO_LDFLAGS = "-Wl,--no-seh"
           Write-Host "Building windows static library"
-          go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -o ./output/windows-x64-libtestoptimization-static/testoptimization.lib exports.go main.go
+          go build -tags civisibility_native -buildmode=c-archive -o ./output/windows-x64-libtestoptimization-static/testoptimization.lib exports.go main.go
           Write-Host "Building windows shared library"
           go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -o ./output/windows-x64-libtestoptimization-dynamic/testoptimization.dll exports.go main.go
           Write-Host "Compressing DLL with UPX"
