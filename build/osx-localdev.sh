@@ -4,6 +4,7 @@ set -e  # Exit on any error
 
 # Configuration
 DEV_DIR="../dev"
+OUTPUT_DIR="../dev-output"
 REPO_URL="https://github.com/DataDog/dd-trace-go.git"
 BRANCH="main"
 TARGET_DIR="$DEV_DIR/internal/civisibility/native"
@@ -96,11 +97,15 @@ echo -e "${GREEN}✓ Native files copied${NC}"
 
 echo -e "${BLUE}--- Building for macOS ---${NC}"
 
+# Create output directory at repo root
+echo -e "${YELLOW}Creating output directory: $OUTPUT_DIR${NC}"
+mkdir -p "$OUTPUT_DIR"
+
+# Get absolute path to output directory before changing directories
+ABS_OUTPUT_DIR=$(realpath "$OUTPUT_DIR")
+
 # Change to target directory
 cd "$TARGET_DIR"
-
-# Create output directory
-mkdir -p ./output
 
 # Set build environment variables
 export CGO_CFLAGS="-mmacosx-version-min=11.0 -O2 -Os -DNDEBUG -fdata-sections -ffunction-sections"
@@ -109,51 +114,55 @@ export GOOS=darwin
 export CGO_ENABLED=1
 
 echo -e "${YELLOW}Building ARM64 static library...${NC}"
-GOARCH=arm64 go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o ./output/macos-arm64-libtestoptimization-static/libtestoptimization.a *.go
+GOARCH=arm64 go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o "$ABS_OUTPUT_DIR/macos-arm64-libtestoptimization-static/libtestoptimization.a" *.go
 echo -e "${GREEN}✓ ARM64 static library built${NC}"
 
 echo -e "${YELLOW}Building ARM64 dynamic library...${NC}"
-GOARCH=arm64 go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -gcflags="all=-l" -o ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib *.go
-strip -x ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib
+GOARCH=arm64 go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -gcflags="all=-l" -o "$ABS_OUTPUT_DIR/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib" *.go
+strip -x "$ABS_OUTPUT_DIR/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib"
 echo -e "${GREEN}✓ ARM64 dynamic library built${NC}"
 
 echo -e "${YELLOW}Building AMD64 static library...${NC}"
-GOARCH=amd64 go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o ./output/macos-x64-libtestoptimization-static/libtestoptimization.a *.go
+GOARCH=amd64 go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o "$ABS_OUTPUT_DIR/macos-x64-libtestoptimization-static/libtestoptimization.a" *.go
 echo -e "${GREEN}✓ AMD64 static library built${NC}"
 
 echo -e "${YELLOW}Building AMD64 dynamic library...${NC}"
-GOARCH=amd64 go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -gcflags="all=-l" -o ./output/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib *.go
-strip -x ./output/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib
+GOARCH=amd64 go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -gcflags="all=-l" -o "$ABS_OUTPUT_DIR/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib" *.go
+strip -x "$ABS_OUTPUT_DIR/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib"
 echo -e "${GREEN}✓ AMD64 dynamic library built${NC}"
 
 echo -e "${YELLOW}Creating universal binaries...${NC}"
 
 # Create universal static library
-mkdir -p ./output/macos-libtestoptimization-static
-lipo -create ./output/macos-arm64-libtestoptimization-static/libtestoptimization.a ./output/macos-x64-libtestoptimization-static/libtestoptimization.a -output ./output/macos-libtestoptimization-static/libtestoptimization.a
-cp ./output/macos-arm64-libtestoptimization-static/libtestoptimization.h ./output/macos-libtestoptimization-static/libtestoptimization.h
+mkdir -p "$ABS_OUTPUT_DIR/macos-libtestoptimization-static"
+lipo -create "$ABS_OUTPUT_DIR/macos-arm64-libtestoptimization-static/libtestoptimization.a" "$ABS_OUTPUT_DIR/macos-x64-libtestoptimization-static/libtestoptimization.a" -output "$ABS_OUTPUT_DIR/macos-libtestoptimization-static/libtestoptimization.a"
+cp "$ABS_OUTPUT_DIR/macos-arm64-libtestoptimization-static/libtestoptimization.h" "$ABS_OUTPUT_DIR/macos-libtestoptimization-static/libtestoptimization.h"
 
 # Create universal dynamic library
-mkdir -p ./output/macos-libtestoptimization-dynamic
-lipo -create ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib ./output/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib -output ./output/macos-libtestoptimization-dynamic/libtestoptimization.dylib
-cp ./output/macos-arm64-libtestoptimization-dynamic/libtestoptimization.h ./output/macos-libtestoptimization-dynamic/libtestoptimization.h
+mkdir -p "$ABS_OUTPUT_DIR/macos-libtestoptimization-dynamic"
+lipo -create "$ABS_OUTPUT_DIR/macos-arm64-libtestoptimization-dynamic/libtestoptimization.dylib" "$ABS_OUTPUT_DIR/macos-x64-libtestoptimization-dynamic/libtestoptimization.dylib" -output "$ABS_OUTPUT_DIR/macos-libtestoptimization-dynamic/libtestoptimization.dylib"
+cp "$ABS_OUTPUT_DIR/macos-arm64-libtestoptimization-dynamic/libtestoptimization.h" "$ABS_OUTPUT_DIR/macos-libtestoptimization-dynamic/libtestoptimization.h"
 
 echo -e "${GREEN}✓ Universal binaries created${NC}"
 
+# Clean up individual architecture folders since we have universal binaries
+echo -e "${YELLOW}Cleaning up individual architecture folders...${NC}"
+rm -rf "$ABS_OUTPUT_DIR/macos-arm64-libtestoptimization-static"
+rm -rf "$ABS_OUTPUT_DIR/macos-arm64-libtestoptimization-dynamic"
+rm -rf "$ABS_OUTPUT_DIR/macos-x64-libtestoptimization-static"
+rm -rf "$ABS_OUTPUT_DIR/macos-x64-libtestoptimization-dynamic"
+echo -e "${GREEN}✓ Individual architecture folders cleaned up${NC}"
+
 echo -e "${YELLOW}Building for iOS...${NC}"
-GOOS=ios GOARCH=arm64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o ./output/ios-libtestoptimization-static/libtestoptimization.a *.go
+GOOS=ios GOARCH=arm64 CGO_ENABLED=1 go build -tags civisibility_native -buildmode=c-archive -ldflags="-s -w" -gcflags="all=-l" -o "$ABS_OUTPUT_DIR/ios-libtestoptimization-static/libtestoptimization.a" *.go
 echo -e "${GREEN}✓ iOS library built${NC}"
 
 echo -e "${BLUE}--- Build Summary ---${NC}"
 echo -e "${GREEN}✓ All libraries built successfully!${NC}"
-echo -e "${YELLOW}Output directory: $(pwd)/output${NC}"
+echo -e "${YELLOW}Output directory: $ABS_OUTPUT_DIR${NC}"
 echo -e "${YELLOW}Available builds:${NC}"
-echo "  • macOS Universal Static:  ./output/macos-libtestoptimization-static/"
-echo "  • macOS Universal Dynamic: ./output/macos-libtestoptimization-dynamic/"
-echo "  • macOS ARM64 Static:      ./output/macos-arm64-libtestoptimization-static/"
-echo "  • macOS ARM64 Dynamic:     ./output/macos-arm64-libtestoptimization-dynamic/"
-echo "  • macOS AMD64 Static:      ./output/macos-x64-libtestoptimization-static/"
-echo "  • macOS AMD64 Dynamic:     ./output/macos-x64-libtestoptimization-dynamic/"
-echo "  • iOS Static:              ./output/ios-libtestoptimization-static/"
+echo "  • macOS Universal Static:  $ABS_OUTPUT_DIR/macos-libtestoptimization-static/"
+echo "  • macOS Universal Dynamic: $ABS_OUTPUT_DIR/macos-libtestoptimization-dynamic/"
+echo "  • iOS Static:              $ABS_OUTPUT_DIR/ios-libtestoptimization-static/"
 
 echo -e "${BLUE}=== Build completed successfully! ===${NC}" 
