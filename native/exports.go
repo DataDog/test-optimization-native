@@ -1677,6 +1677,32 @@ func topt_test_set_benchmark_number_data(test_id C.topt_TestId, measure_type *C.
 	return toBool(false)
 }
 
+// topt_test_log logs a message for a test.
+//
+// Parameters:
+//   - test_id: The ID of the test.
+//   - message: A string message to log.
+//   - tags: Optional string containing tags associated with the log message.
+//
+// Returns:
+//   - C.Bool: True if the message was logged successfully, false if the test was not found or message was nil.
+//
+//export topt_test_log
+func topt_test_log(test_id C.topt_TestId, message *C.char, tags *C.char) C.Bool {
+	if message == nil {
+		return toBool(false)
+	}
+	var sTags string
+	if tags != nil {
+		sTags = C.GoString(tags)
+	}
+	if test, ok := getTest(test_id); ok {
+		test.Log(C.GoString(message), sTags)
+		return toBool(true)
+	}
+	return toBool(false)
+}
+
 // *******************************************************************************************************************
 // Spans
 // *******************************************************************************************************************
