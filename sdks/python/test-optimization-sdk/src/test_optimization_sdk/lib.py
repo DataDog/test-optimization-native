@@ -257,6 +257,7 @@ ffi.cdef("""
     Bool topt_test_close(topt_TestId test_id, topt_TestCloseOptions options);
     Bool topt_test_set_benchmark_string_data(topt_TestId test_id, char* measure_type, topt_KeyValueArray data);
     Bool topt_test_set_benchmark_number_data(topt_TestId test_id, char* measure_type, topt_KeyNumberArray data);
+    Bool topt_test_log(topt_TestId test_id, char* message, char* tags);
 
     topt_SpanResult topt_span_create(topt_TslvId parent_id, topt_SpanStartOptions span_options);
     Bool topt_span_set_string_tag(topt_TslvId span_id, char* key, char* value);
@@ -392,6 +393,7 @@ __all__ = [
     "topt_test_close",
     "topt_test_set_benchmark_string_data",
     "topt_test_set_benchmark_number_data",
+    "topt_test_log",
     "topt_span_create",
     "topt_span_set_string_tag",
     "topt_span_set_number_tag",

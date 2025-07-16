@@ -26,7 +26,7 @@ from test_optimization_sdk.constants import (
     TEST_OPTIMIZATION_DOWNLOAD_URL_FORMAT,
 )
 
-__version__ = "0.0.1"
+__version__ = "0.0.4"
 
 __all__ = [
     "TestOptimization",

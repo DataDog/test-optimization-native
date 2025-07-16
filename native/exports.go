@@ -426,6 +426,7 @@ import (
 	civisibility "github.com/DataDog/dd-trace-go/v2/internal/civisibility/integrations"
 	"github.com/DataDog/dd-trace-go/v2/internal/civisibility/utils"
 	"github.com/DataDog/dd-trace-go/v2/internal/civisibility/utils/net"
+	"github.com/DataDog/dd-trace-go/v2/internal/civisibility/utils/telemetry"
 )
 
 // *******************************************************************************************************************
@@ -1570,25 +1571,38 @@ func topt_test_set_error(test_id C.topt_TestId, error_type *C.char, error_messag
 //export topt_test_set_source
 func topt_test_set_source(test_id C.topt_TestId, file *C.char, start_line *C.int, end_line *C.int) C.Bool {
 	if test, ok := getTest(test_id); ok {
+		var sFile string
+		var iStartline, iEndline int
+
 		if file != nil {
-			gFile := C.GoString(file)
-			gFile = utils.GetRelativePathFromCITagsSourceRoot(gFile)
-			test.SetTag(constants.TestSourceFile, gFile)
+			sFile = C.GoString(file)
+			sFile = utils.GetRelativePathFromCITagsSourceRoot(sFile)
+			test.SetTag(constants.TestSourceFile, sFile)
 
 			// get the codeowner of the function
 			codeOwners := utils.GetCodeOwners()
 			if codeOwners != nil {
-				match, found := codeOwners.Match("/" + gFile)
+				match, found := codeOwners.Match("/" + sFile)
 				if found {
 					test.SetTag(constants.TestCodeOwners, match.GetOwnersString())
 				}
 			}
 		}
 		if start_line != nil {
-			test.SetTag(constants.TestSourceStartLine, int(*start_line))
+			iStartline = int(*start_line)
+			test.SetTag(constants.TestSourceStartLine, iStartline)
 		}
 		if end_line != nil {
-			test.SetTag(constants.TestSourceEndLine, int(*end_line))
+			iEndline = int(*end_line)
+			test.SetTag(constants.TestSourceEndLine, iEndline)
+		}
+		if sFile != "" && iStartline > 0 && iEndline > 0 {
+			if analyzer := civisibility.GetImpactedTestsAnalyzer(); analyzer != nil {
+				if analyzer.IsImpacted(test.Name(), sFile, iStartline, iEndline) {
+					test.SetTag(constants.TestIsModified, "true")
+					telemetry.ImpactedTestsModified()
+				}
+			}
 		}
 		return toBool(true)
 	}
@@ -1658,6 +1672,32 @@ func topt_test_set_benchmark_number_data(test_id C.topt_TestId, measure_type *C.
 		}
 
 		test.SetBenchmarkData(C.GoString(measure_type), data)
+		return toBool(true)
+	}
+	return toBool(false)
+}
+
+// topt_test_log logs a message for a test.
+//
+// Parameters:
+//   - test_id: The ID of the test.
+//   - message: A string message to log.
+//   - tags: Optional string containing tags associated with the log message.
+//
+// Returns:
+//   - C.Bool: True if the message was logged successfully, false if the test was not found or message was nil.
+//
+//export topt_test_log
+func topt_test_log(test_id C.topt_TestId, message *C.char, tags *C.char) C.Bool {
+	if message == nil {
+		return toBool(false)
+	}
+	var sTags string
+	if tags != nil {
+		sTags = C.GoString(tags)
+	}
+	if test, ok := getTest(test_id); ok {
+		test.Log(C.GoString(message), sTags)
 		return toBool(true)
 	}
 	return toBool(false)

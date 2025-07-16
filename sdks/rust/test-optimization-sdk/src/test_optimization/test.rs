@@ -297,4 +297,20 @@ impl Test {
         unsafe { dealloc(kn_array_ptr as *mut u8, layout); }
         result
     }
+
+    /// Write a log message for this test
+    #[allow(dead_code)]
+    pub fn log(&self, message: impl AsRef<str>, tags: Option<impl AsRef<str>>) -> bool {
+        let message_cstring = CString::new(message.as_ref()).unwrap();
+        let tags_cstring = tags.map(|wd| CString::new(wd.as_ref()).unwrap());
+        unsafe {
+            Bool_to_bool(topt_test_log(
+                self.test_id,
+                message_cstring.as_ptr() as *mut c_char,
+                tags_cstring
+                    .as_ref()
+                    .map_or(null_mut(), |s| s.as_ptr() as *mut c_char),
+            ))
+        }
+    }
 }

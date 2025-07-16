@@ -73,6 +73,8 @@ fn complete() {
     pass_test.set_number_tag("Pass-NumberFromRust", 42f64);
     pass_test.set_test_source("test.rs", &6, &58);
     pass_test.set_coverage_data(&["file.rs"]);
+    pass_test.log("Hello world", Some("tag1=value1,tag2=value2"));
+    pass_test.log("Hello world", None::<&str>);
 
     let mut measurement_data: HashMap<&str, f64> = HashMap::new();
     measurement_data.insert("data1", 42f64);
