@@ -11,6 +11,7 @@ use ureq::AsSendBody;
 
 const TEST_OPTIMIZATION_SDK_SKIP_NATIVE_INSTALL: &str = "TEST_OPTIMIZATION_SDK_SKIP_NATIVE_INSTALL";
 const TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH: &str = "TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH";
+const TEST_OPTIMIZATION_DEV_MODE: &str = "TEST_OPTIMIZATION_DEV_MODE";
 const TEST_OPTIMIZATION_DOWNLOAD_URL_FORMAT: &str = "https://github.com/DataDog/test-optimization-native/releases/download/v0.0.3-preview/";
 
 fn main() {
@@ -24,6 +25,13 @@ fn main() {
     } else {
         format!("{}-{}-libtestoptimization-static.zip", platform, arch)
     };
+
+    // Check for dev mode first (highest priority)
+    if env::var(TEST_OPTIMIZATION_DEV_MODE).is_ok() {
+        link_from_dev_output(platform, arch);
+        other_links(&target);
+        return;
+    }
 
     // Check for custom native library search path
     if let Ok(search_path) = env::var(TEST_OPTIMIZATION_SDK_NATIVE_SEARCH_PATH) {
@@ -131,6 +139,37 @@ fn link_from_search_path(platform: &str, lib_name: &str, search_path: &str) {
         println!("cargo:warning=Using custom native library search path: {}", search_path.display());
         println!("cargo:rustc-link-search=native={}", search_path.display());
         println!("cargo:rustc-link-lib=static=testoptimization");
+    }
+}
+
+fn link_from_dev_output(platform: &str, arch: &str) {
+    // Construct the dev output folder name based on platform and arch
+    let folder_name = if platform == "macos" {
+        format!("{}-libtestoptimization-static", platform)
+    } else {
+        format!("{}-{}-libtestoptimization-static", platform, arch)
+    };
+
+    // The dev-output directory is relative to the repo root
+    // build.rs is in sdks/rust/test-optimization-sdk/, so we go up 3 levels
+    let dev_output_path = Path::new("../../../dev-output").join(&folder_name);
+
+    // Check if the library files exist
+    let has_library = match platform {
+        "windows" => dev_output_path.join("testoptimization.lib").exists(),
+        "linux" => dev_output_path.join("libtestoptimization.a").exists(), 
+        "macos" => dev_output_path.join("libtestoptimization.a").exists(),
+        _ => false,
+    };
+
+    if has_library {
+        println!("cargo:warning=Using dev mode native library from: {}", dev_output_path.display());
+        println!("cargo:rustc-link-search=native={}", dev_output_path.display());
+        println!("cargo:rustc-link-lib=static=testoptimization");
+    } else {
+        println!("cargo:warning=Dev mode enabled but library not found at: {}", dev_output_path.display());
+        println!("cargo:warning=Please run the localdev.sh script to build the native libraries first");
+        process::exit(1);
     }
 }
 

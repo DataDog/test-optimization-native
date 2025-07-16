@@ -13,5 +13,7 @@ COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 COPY build.rs ./
 
+ENV DD_TRACE_DEBUG=1
+
 # Run the tests
 CMD ["cargo", "test", "--", "--nocapture"] 
