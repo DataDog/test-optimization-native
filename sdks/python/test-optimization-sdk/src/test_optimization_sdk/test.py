@@ -21,6 +21,7 @@ from .lib import (
     topt_send_code_coverage_payload,
     topt_test_set_benchmark_number_data,
     topt_test_set_benchmark_string_data,
+    topt_test_log
 )
 from .utils import get_now
 from .base import BaseEntity
@@ -456,3 +457,36 @@ class Test(BaseEntity):
             ))
         except Exception as e:
             raise RuntimeError(f"Failed to set benchmark number data: {e}") 
+
+    def log(self, message: str, tags: Optional[str]) -> bool:
+        """Log a message for this test.
+
+        Args:
+            message: Message to log
+            tags: Optional tags to log
+
+        Returns:
+            True if successful, False otherwise
+
+        Raises:
+            RuntimeError: If the test is already closed
+        """
+        if self._closed:
+            raise RuntimeError("Cannot log on closed test")
+
+        try:
+            # Create C strings for the message and tags
+            message_bytes = message.encode()
+            tags_bytes = tags.encode() if tags else None
+
+            message_cstr = self._track_c_string(ffi.new("char[]", message_bytes))
+            tags_cstr = self._track_c_string(ffi.new("char[]", tags_bytes)) if tags else ffi.NULL
+
+            # Log the message
+            return bool(topt_test_log(
+                self.test_id,
+                message_cstr,
+                tags_cstr,
+            ))
+        except Exception as e:
+            raise RuntimeError(f"Failed to log the message: {e}")

@@ -392,6 +392,7 @@ __all__ = [
     "topt_test_close",
     "topt_test_set_benchmark_string_data",
     "topt_test_set_benchmark_number_data",
+    "topt_test_log",
     "topt_span_create",
     "topt_span_set_string_tag",
     "topt_span_set_number_tag",

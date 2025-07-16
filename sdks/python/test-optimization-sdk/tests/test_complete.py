@@ -110,6 +110,8 @@ def test_complete():
     pass_test.set_number_tag("Pass-NumberFromPython", 42.0)
     pass_test.set_test_source("test.py", 6, 58)
     pass_test.set_coverage_data(["file.py"])
+    pass_test.log("Hello world", "tag1=value1,tag2=value2")
+    pass_test.log("Hello world", None)
 
     # Set benchmark data for pass test
     measurement_data: Dict[str, float] = {
