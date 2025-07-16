@@ -307,6 +307,7 @@ unsafe extern "C" {
     pub fn topt_test_set_source(test_id: topt_TestId, file: *mut c_char, start_line: *mut c_int, end_line: *mut c_int) -> Bool;
     pub fn topt_test_set_benchmark_string_data(test_id: topt_TestId, measure_type: *mut c_char, data_array: topt_KeyValueArray) -> Bool;
     pub fn topt_test_set_benchmark_number_data(test_id: topt_TestId, measure_type: *mut c_char, data_array: topt_KeyNumberArray) -> Bool;
+    pub fn topt_test_log(test_id: topt_TestId, message: *mut c_char, tags: *mut c_char) -> Bool;
 
     // Span functions
     pub fn topt_span_create(parent_id: topt_TslvId, span_options: topt_SpanStartOptions) -> topt_SpanResult;
