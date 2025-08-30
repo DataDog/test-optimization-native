@@ -102,8 +102,11 @@ jobs:
             cp -rf ./native/* external/internal/civisibility/native/
       - name: Build and run linux-arm64
         run: |
-            docker buildx build --platform linux/arm64 --build-arg GOARCH=arm64 --build-arg FILE_NAME=linux-arm64-libtestoptimization -t libtestoptimization-builder:arm64 -f ./Dockerfile ../../.. --load
-            docker run --rm -v ./output:/libtestoptimization libtestoptimization-builder:arm64
+            docker buildx build --platform linux/arm64 --build-arg GOARCH=arm64 --build-arg FILE_NAME=linux-arm64-libtestoptimization -t libtestoptimization-builder-static:arm64 -f ./Dockerfile-static ../../.. --load
+            docker run --rm -v ./output:/libtestoptimization libtestoptimization-builder-static:arm64
+
+            docker buildx build --platform linux/arm64 --build-arg GOARCH=arm64 --build-arg FILE_NAME=linux-arm64-libtestoptimization -t libtestoptimization-builder-dynamic:arm64 -f ./Dockerfile-dynamic ../../.. --load
+            docker run --rm -v ./output:/libtestoptimization libtestoptimization-builder-dynamic:arm64
         working-directory: external/internal/civisibility/native
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -133,8 +136,11 @@ jobs:
             cp -rf ./native/* external/internal/civisibility/native/
       - name: Build and run linux-amd64
         run: |
-            docker build --platform linux/amd64 --build-arg GOARCH=amd64 --build-arg FILE_NAME=linux-x64-libtestoptimization -t libtestoptimization-builder:amd64 -f ./Dockerfile ../../..
-            docker run --rm -v ./output:/libtestoptimization libtestoptimization-builder:amd64
+            docker build --platform linux/amd64 --build-arg GOARCH=amd64 --build-arg FILE_NAME=linux-x64-libtestoptimization -t libtestoptimization-builder-static:amd64 -f ./Dockerfile-static ../../..
+            docker run --rm -v ./output:/libtestoptimization libtestoptimization-builder-static:amd64
+
+            docker build --platform linux/amd64 --build-arg GOARCH=amd64 --build-arg FILE_NAME=linux-x64-libtestoptimization -t libtestoptimization-builder-dynamic:amd64 -f ./Dockerfile-dynamic ../../..
+            docker run --rm -v ./output:/libtestoptimization libtestoptimization-builder-dynamic:amd64
         working-directory: external/internal/civisibility/native
       - name: Build and run android-arm64
         run: |
