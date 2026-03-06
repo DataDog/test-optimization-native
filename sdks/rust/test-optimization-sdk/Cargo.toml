@@ -10,7 +10,7 @@ rustc_version_runtime = "0.3.0"
 
 [build-dependencies]
 ureq = { version = "3.0.10", default-features = false, features = ["rustls"] }
-zip = { version = "2.5.0", default-features = false, features = ["deflate"] }
+zip = { version = "8.0.0", default-features = false, features = ["deflate"] }
 
 [target.'cfg(windows)'.build-dependencies]
 cc = "1.2.3"
