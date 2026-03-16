@@ -16,13 +16,13 @@ jobs:
     name: macOS
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
             go-version: '1.24'
       - run: brew install coreutils
       - name: Checkout external repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           repository: "DataDog/dd-trace-go"
           ref: ${{ env.dd_trace_go_ref }}
@@ -71,7 +71,7 @@ jobs:
             rm -r ./output/ios-libtestoptimization-static
         working-directory: external/internal/civisibility/native
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: mac-artifact
           path: external/internal/civisibility/native/output/*.zip*
@@ -80,13 +80,13 @@ jobs:
     name: linux-arm64
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
       - name: Checkout external repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           repository: "DataDog/dd-trace-go"
           ref: ${{ env.dd_trace_go_ref }}
@@ -106,7 +106,7 @@ jobs:
             docker run --rm -v ./output:/libtestoptimization libtestoptimization-builder:arm64
         working-directory: external/internal/civisibility/native
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: linux-arm64-artifact
           path: external/internal/civisibility/native/output/*.zip*
@@ -115,9 +115,9 @@ jobs:
     name: linux-amd64
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: Checkout external repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           repository: "DataDog/dd-trace-go"
           ref: ${{ env.dd_trace_go_ref }}
@@ -142,7 +142,7 @@ jobs:
             docker run --rm -v ./output:/libtestoptimization libtestoptimization-builder:androidarm64
         working-directory: external/internal/civisibility/native
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: linux-amd64-artifact
           path: external/internal/civisibility/native/output/*.zip*
@@ -151,9 +151,9 @@ jobs:
     name: windows
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: Checkout external repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           repository: "DataDog/dd-trace-go"
           ref: ${{ env.dd_trace_go_ref }}
@@ -259,7 +259,7 @@ jobs:
           Remove-Item -Recurse -Force ./output/windows-x64-libtestoptimization-dynamic
         working-directory: external/internal/civisibility/native
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: windows-artifact
           path: external/internal/civisibility/native/output/*.zip*
@@ -272,55 +272,55 @@ jobs:
       contents: write
       actions: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: Download artifacts from mac job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: mac-artifact
           path: artifacts
       - name: Download artifacts from linux-arm64 job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: linux-arm64-artifact
           path: artifacts
       - name: Download artifacts from linux-amd64 job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: linux-amd64-artifact
           path: artifacts
       - name: Download artifacts from windows job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: windows-artifact
           path: artifacts
       - name: Upload final artifacts
         id: artifact-upload-step
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: all-artifacts
           path: artifacts/*.zip*
           if-no-files-found: error
       - name: Trigger Python SDK tests
-        uses: benc-uk/workflow-dispatch@v1
+        uses: benc-uk/workflow-dispatch@7a027648b88c2413826b6ddd6c76114894dc5ec4 # v1.3.1
         with:
           workflow: python-sdk-tests.yml
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           inputs: '{ "artifact_id": "${{ steps.artifact-upload-step.outputs.artifact-id }}" }'
       - name: Trigger Rust SDK tests
-        uses: benc-uk/workflow-dispatch@v1
+        uses: benc-uk/workflow-dispatch@7a027648b88c2413826b6ddd6c76114894dc5ec4 # v1.3.1
         with:
           workflow: rust-sdk-tests.yml
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           inputs: '{ "artifact_id": "${{ steps.artifact-upload-step.outputs.artifact-id }}" }'
       - name: Wait for trigger Python SDK tests start
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@ccfb013c15c8afb7bf2b7c028fb74dc5a068cccc # v1.3.4
         with:
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           check-name: 'Download Build Artifacts for Python SDK Tests'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 10
       - name: Wait for trigger Rust SDK tests start
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@ccfb013c15c8afb7bf2b7c028fb74dc5a068cccc # v1.3.4
         with:
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           check-name: 'Download Build Artifacts for Rust SDK Tests'
@@ -336,13 +336,13 @@ jobs:
       contents: write
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: all-artifacts
           path: release_artifacts
 
       - name: Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
         with:
           files: release_artifacts/*.zip*
           draft: false
