@@ -1,0 +1,6 @@
+# Pinned dependencies for CI reproducibility.
+# Update these versions intentionally, not automatically.
+# Generated on 2026-04-07.
+cffi==2.0.0
+typing-extensions==4.15.0
+pytest==9.0.2

@@ -1,0 +1,82 @@
+name: Lint Dependency Pinning
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '**/Dockerfile*'
+      - '**/setup.py'
+      - '**/requirements*.txt'
+      - '**/Cargo.toml'
+
+jobs:
+  check-gha-pinning:
+    name: Check GitHub Actions are pinned to SHAs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Check for unpinned GitHub Actions
+        run: |
+          UNPINNED=$(grep -rn 'uses:.*@' .github/workflows/ \
+            --include='*.yml' --include='*.yaml' \
+            | grep -v '@[0-9a-f]\{40\}' \
+            | grep -v '^\s*#' \
+            | grep -v 'grep.*uses:' \
+            || true)
+
+          if [ -n "$UNPINNED" ]; then
+            echo "::error::Found GitHub Actions not pinned to full-length commit SHAs:"
+            echo "$UNPINNED"
+            echo ""
+            echo "All actions must be pinned to a full 40-character commit SHA with a version comment."
+            echo "Example: uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4"
+            exit 1
+          fi
+
+          echo "All GitHub Actions are pinned to commit SHAs."
+
+  check-dockerfile-pinning:
+    name: Check Dockerfiles use pinned base images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Check for unpinned Docker base images
+        run: |
+          UNPINNED=$(grep -rn '^FROM ' --include='Dockerfile*' . \
+            | grep -v '@sha256:' \
+            || true)
+
+          if [ -n "$UNPINNED" ]; then
+            echo "::error::Found Dockerfiles with unpinned base images (missing @sha256: digest):"
+            echo "$UNPINNED"
+            echo ""
+            echo "All Docker base images must be pinned with a sha256 digest."
+            echo "Example: FROM golang:1.24.1-bookworm@sha256:abc123..."
+            exit 1
+          fi
+
+          echo "All Docker base images are pinned with sha256 digests."
+
+  check-lockfiles:
+    name: Check lockfiles are present
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Check Cargo.lock exists
+        run: |
+          if [ ! -f sdks/rust/test-optimization-sdk/Cargo.lock ]; then
+            echo "::error::Cargo.lock is missing. Run 'cargo generate-lockfile' and commit the lockfile."
+            exit 1
+          fi
+          echo "Cargo.lock is present."
+
+      - name: Check Python requirements.txt exists
+        run: |
+          if [ ! -f sdks/python/test-optimization-sdk/requirements.txt ]; then
+            echo "::error::requirements.txt is missing. Pinned Python dependencies are required for CI."
+            exit 1
+          fi
+          echo "requirements.txt is present."
