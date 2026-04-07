@@ -1,5 +1,5 @@
 # Stage 1: Build the static library
-FROM golang:1 AS builder
+FROM golang:1.24.1-bookworm@sha256:fa1a01d362a7b9df68b021d59a124d28cae6d99ebd1a876e3557c4dd092f1b1d AS builder
 
 # Install dependencies
 RUN apt-get update && apt search openjdk && apt-get install -y gcc musl-tools build-essential devscripts openjdk-17-jdk
@@ -10,6 +10,7 @@ RUN apt-get update && apt search openjdk && apt-get install -y gcc musl-tools bu
 ENV ANDROID_HOME=/root
 ENV PATH=$PATH:$ANDROID_HOME/cmdline-tools/tools:$ANDROID_HOME/cmdline-tools/tools/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools:$ANDROID_HOME/ndk-bundle:$ANDROID_HOME/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/bin:$ANDROID_HOME/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include
 RUN curl -L https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o sdktools.zip && \
+    echo "2d2d50857e4eb553af5a6dc3ad507a17adf43d115264b1afc116f95c92e5e258  sdktools.zip" | sha256sum -c - && \
     unzip sdktools.zip -d /root/cmdline-tools && \
     mv /root/cmdline-tools/cmdline-tools /root/cmdline-tools/tools && \
     rm sdktools.zip
@@ -20,6 +21,7 @@ RUN mkdir ~/.android && touch ~/.android/repositories.cfg && \
 # 'ndk-bundle' is the default directory name when NDK is installed through Android Studio so reusing that naming convention
 # download URL: https://developer.android.com/ndk/downloads
 RUN curl -L https://dl.google.com/android/repository/android-ndk-r27c-linux.zip -o androidndk.zip && \
+    echo "59c2f6dc96743b5daf5d1626684640b20a6bd2b1d85b13156b90333741bad5cc  androidndk.zip" | sha256sum -c - && \
     unzip androidndk.zip -d /root && \
     rm androidndk.zip && \
     mv /root/android-ndk* /root/ndk-bundle
@@ -54,7 +56,7 @@ WORKDIR /app/internal/civisibility/native
 RUN go build -tags civisibility_native -buildmode=c-shared -o ./output/dynamic/libtestoptimization.so *.go
 
 # Stage 2: Extract the library
-FROM alpine:latest
+FROM alpine:3.21@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
 
 # Build arguments for the final archive names; you can override these during build
 ARG FILE_NAME=libcivisibility

@@ -14,15 +14,15 @@ setup(
     package_dir={"": "src"},
     python_requires=">=3.7",
     install_requires=[
-        "cffi>=1.15.0",
-        "typing-extensions>=4.0.0",
+        "cffi>=1.15.0,<3.0.0",
+        "typing-extensions>=4.0.0,<5.0.0",
     ],
     extras_require={
         "dev": [
-            "pytest>=7.0.0",
-            "black>=22.0.0",
-            "isort>=5.0.0",
-            "mypy>=0.900",
+            "pytest>=7.0.0,<10.0.0",
+            "black>=22.0.0,<27.0.0",
+            "isort>=5.0.0,<9.0.0",
+            "mypy>=0.900,<2.0.0",
         ],
     },
     classifiers=[

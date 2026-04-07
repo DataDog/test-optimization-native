@@ -1,5 +1,5 @@
 # Stage 1: Build the static library
-FROM golang:1.24.1-bookworm AS builder
+FROM golang:1.24.1-bookworm@sha256:fa1a01d362a7b9df68b021d59a124d28cae6d99ebd1a876e3557c4dd092f1b1d AS builder
 
 # Install dependencies
 RUN apt-get update && apt-get install -y gcc binutils
@@ -29,7 +29,7 @@ RUN go build -tags civisibility_native -buildmode=c-shared -ldflags="-s -w" -gcf
 RUN strip --strip-unneeded ./output/dynamic/libtestoptimization.so
 
 # Stage 2: Extract the library
-FROM alpine:latest
+FROM alpine:3.21@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
 
 # Build arguments for the final archive names; you can override these during build
 ARG FILE_NAME=libtestoptimization

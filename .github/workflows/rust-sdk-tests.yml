@@ -21,7 +21,7 @@ jobs:
     steps:
       - name: Create Check
         id: create_check
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const checkRun = await github.rest.checks.create({ owner: context.repo.owner, repo: context.repo.repo, name: process.env.JOB_DISPLAY_NAME, head_sha: context.sha, status: "in_progress" });
@@ -43,7 +43,7 @@ jobs:
           ls -la
 
       - name: Upload artifacts for test jobs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: test-artifacts
           path: ${{ github.workspace }}/build_artifacts
@@ -51,7 +51,7 @@ jobs:
 
       - name: Update Check
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             await github.rest.checks.update({ owner: context.repo.owner, repo: context.repo.repo, check_run_id: parseInt("${{ steps.create_check.outputs.check_run_id }}"), status: "completed", conclusion: "${{ job.status }}" === "success" ? "success" : "failure" });
@@ -71,17 +71,17 @@ jobs:
     steps:
       - name: Create Check
         id: create_check
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const checkRun = await github.rest.checks.create({ owner: context.repo.owner, repo: context.repo.repo, name: process.env.JOB_DISPLAY_NAME, head_sha: context.sha, status: "in_progress" });
             core.setOutput("check_run_id", checkRun.data.id);
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Download test artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: test-artifacts
           path: ${{ github.workspace }}/build_artifacts
@@ -93,7 +93,7 @@ jobs:
 
       - name: Update Check
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             await github.rest.checks.update({ owner: context.repo.owner, repo: context.repo.repo, check_run_id: parseInt("${{ steps.create_check.outputs.check_run_id }}"), status: "completed", conclusion: "${{ job.status }}" === "success" ? "success" : "failure" });
@@ -113,23 +113,23 @@ jobs:
     steps:
       - name: Create Check
         id: create_check
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const checkRun = await github.rest.checks.create({ owner: context.repo.owner, repo: context.repo.repo, name: process.env.JOB_DISPLAY_NAME, head_sha: context.sha, status: "in_progress" });
             core.setOutput("check_run_id", checkRun.data.id);
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Download test artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: test-artifacts
           path: ${{ github.workspace }}/build_artifacts
 
       - name: Install rust nightly
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@150fca883cd4034361b621bd4e6a9d34e5143606 # v1
         with:
             toolchain: nightly
             override: true
@@ -140,7 +140,7 @@ jobs:
 
       - name: Update Check
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             await github.rest.checks.update({ owner: context.repo.owner, repo: context.repo.repo, check_run_id: parseInt("${{ steps.create_check.outputs.check_run_id }}"), status: "completed", conclusion: "${{ job.status }}" === "success" ? "success" : "failure" });
@@ -160,26 +160,26 @@ jobs:
     steps:
       - name: Create Check
         id: create_check
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const checkRun = await github.rest.checks.create({ owner: context.repo.owner, repo: context.repo.repo, name: process.env.JOB_DISPLAY_NAME, head_sha: context.sha, status: "in_progress" });
             core.setOutput("check_run_id", checkRun.data.id);
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Download test artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: test-artifacts
           path: ${{ github.workspace }}/build_artifacts
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Build and run tests
         run: |
@@ -188,7 +188,7 @@ jobs:
 
       - name: Update Check
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             await github.rest.checks.update({ owner: context.repo.owner, repo: context.repo.repo, check_run_id: parseInt("${{ steps.create_check.outputs.check_run_id }}"), status: "completed", conclusion: "${{ job.status }}" === "success" ? "success" : "failure" });
@@ -208,29 +208,29 @@ jobs:
     steps:
       - name: Create Check
         id: create_check
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const checkRun = await github.rest.checks.create({ owner: context.repo.owner, repo: context.repo.repo, name: process.env.JOB_DISPLAY_NAME, head_sha: context.sha, status: "in_progress" });
             core.setOutput("check_run_id", checkRun.data.id);
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Download test artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: test-artifacts
           path: ${{ github.workspace }}/build_artifacts
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
         with:
           targets: x86_64-apple-darwin
           components: rustfmt, clippy
 
       - name: Cache dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           prefix-key: rust-cache-macos
 
@@ -239,7 +239,7 @@ jobs:
 
       - name: Update Check
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             await github.rest.checks.update({ owner: context.repo.owner, repo: context.repo.repo, check_run_id: parseInt("${{ steps.create_check.outputs.check_run_id }}"), status: "completed", conclusion: "${{ job.status }}" === "success" ? "success" : "failure" });
@@ -259,23 +259,23 @@ jobs:
     steps:
       - name: Create Check
         id: create_check
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const checkRun = await github.rest.checks.create({ owner: context.repo.owner, repo: context.repo.repo, name: process.env.JOB_DISPLAY_NAME, head_sha: context.sha, status: "in_progress" });
             core.setOutput("check_run_id", checkRun.data.id);
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Download test artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: test-artifacts
           path: ${{ github.workspace }}/build_artifacts
 
       - name: Install rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@150fca883cd4034361b621bd4e6a9d34e5143606 # v1
         with:
             override: true
 
@@ -284,7 +284,7 @@ jobs:
 
       - name: Update Check
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             await github.rest.checks.update({ owner: context.repo.owner, repo: context.repo.repo, check_run_id: parseInt("${{ steps.create_check.outputs.check_run_id }}"), status: "completed", conclusion: "${{ job.status }}" === "success" ? "success" : "failure" });
