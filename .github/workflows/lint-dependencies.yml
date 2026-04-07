@@ -19,8 +19,10 @@ jobs:
       - name: Check for unpinned GitHub Actions
         run: |
           UNPINNED=$(grep -rn 'uses:.*@' .github/workflows/ \
+            --include='*.yml' --include='*.yaml' \
             | grep -v '@[0-9a-f]\{40\}' \
             | grep -v '^\s*#' \
+            | grep -v 'grep.*uses:' \
             || true)
 
           if [ -n "$UNPINNED" ]; then
