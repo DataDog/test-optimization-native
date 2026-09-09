@@ -21,7 +21,7 @@ This SDK provides integration with Datadog's Test Optimization features for Pyth
 Install the package using pip:
 
 ```bash
-pip install test-optimization-sdk
+cd sdks/python/test-optimization-sdk && pip install .
 ```
 
 ## Usage
